@@ -1,0 +1,28 @@
+{
+ "extracoes": {
+  "socio_municipal": {
+   "origem": "data/raw/tabelao_municipal.xlsx (Felipe Gandra, 19/11/2026)",
+   "sha256_origem": "a7bee8f99105dc9628f59730b07f67e8b31b663935f5e3fb42e49fea6095449b",
+   "script": "scripts/converter_socio.py",
+   "gerado_em": "2026-11-24T15:33:54-03:00",
+   "saidas": [
+    "data/socio_municipal.parquet",
+    "data/socio_dicionario.parquet"
+   ],
+   "linhas": 1095,
+   "colunas": 82,
+   "celulas_null": 11022,
+   "unidades": "reais em R$ de 2025 (não R$ mil como no protótipo)"
+  },
+  "malha_municipios": {
+   "origem": "IBGE Malha Municipal 2022 (BR_Municipios_2022.zip) + Biomas 1:250 mil 2019 (Biomas_250mil.zip), geoftp.ibge.gov.br",
+   "script": "scripts/preparar_malha.py --pct 4%",
+   "gerado_em": "2026-11-24T15:45:09-03:00",
+   "saida": "data/malha_municipios.json",
+   "municipios": 1095,
+   "municipios_base_sem_malha": [],
+   "area": "AREA_KM2 oficial do IBGE",
+   "nota": "Conferência no curupira (information_schema) fica para a etapa 0 de inspeção"
+  }
+ }
+}
