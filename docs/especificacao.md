@@ -60,9 +60,32 @@ O BI é uma página local para:
     - Diminuiu: E, segue em ASD; F, saiu da ASD.
     - Atalhos: "Só em ASD hoje (A, B, C, E)" e "Só fora de ASD (D, F)".
   - **risco fundiário** com a regra entre parênteses, como no protótipo (fonte: Relatório 2, seção 2.2.3.2);
-  - **uso da terra** (agricultura, pastagem, mosaico de usos, vegetação nativa): o usuário escolhe quais usos compõem a "área potencialmente degradada". O **padrão é agricultura + pastagem** (definição de Pedro, 24/11/2026). Essa soma alimenta o filtro de área mínima, as variáveis, os mapas da aba 4 e as tabelas;
+  - **uso da terra (% da área do imóvel)**, em card próprio: para cada uso (agricultura, pastagem, mosaico de usos, vegetação nativa), botões **Sem filtro | ≥ | ≤** e um campo de %. A % de um uso é (degradada + não degradada do uso) / `area_ha` do imóvel. O padrão é "Sem filtro". **Não há seletor** dos usos que compõem a área degradada: ele foi removido (Pedro, 24/11, 20h);
   - área potencialmente degradada mínima (ha);
   - botão "Limpar filtros de imóvel".
+
+**Visual (Pedro, 24/11, 20h), vale para o BI inteiro:**
+
+- **Títulos de cards mais visíveis:**
+  - nos cards de número, o título vem acima do valor, com 16 px, peso 600 e cor do texto (não cinza claro);
+  - legendas de fieldset com 17 px em negrito.
+- **Cards de filtro de imóvel** (abas 3 e 4): fundos em **dois tons de cinza alternados**, para diferenciar um card do outro. Os grupos coloridos de tipologia e aridez ficam por cima, em fundo branco.
+- **Cores dos usos, sempre as da legenda MapBiomas:**
+
+  | Uso | Cor |
+  |---|---|
+  | agricultura (rosa) | `#E974ED` |
+  | pastagem (bege) | `#EDDE8E` |
+  | mosaico | `#FFEFC3` |
+  | vegetação nativa | `#1F8D49` |
+
+  A parte potencialmente degradada aparece em vermelho `#d73027`.
+- **Quadro "uso da terra nos imóveis selecionados":**
+  - cada barra é a área do uso, e a maior barra é o uso de maior área;
+  - o trecho vermelho é a parte degradada;
+  - à direita, "área ha · **X% degradada**", com o % em vermelho e negrito;
+  - o subtítulo explica a leitura.
+- **Tabelas por tipologia:** linhas **"Subtotal Agricultura familiar / Grupo híbrido / Potencial Eco Invest"** destacadas (fundo na cor do grupo e negrito), antes das tipologias de cada grupo, mais o total.
 
 **Aba 4, Geo + socioeconomia (layout revisto por Pedro em 24/11, 17h50):**
 
@@ -111,7 +134,7 @@ O BI é uma página local para:
 | `aridez` | `classe` (A–F; nulo vira `'Sem classe'`) |
 | `risco_fund` | `carac_fund` (MUITO_BAIXO … ALTO) |
 | `agri_deg_ha`, `agri_ndeg_ha`, `past_deg_ha`, `past_ndeg_ha`, `mos_deg_ha`, `mos_ndeg_ha`, `vn_deg_ha`, `vn_ndeg_ha` | Colunas `*_degradad*_ha` da tabela de salvaguardas |
-| `area_pot_degradada_ha` | **Definição de Pedro (24/11/2026):** `agricultura_degradada_ha + pastagem_degradada_ha`, nulos como zero, como em `sql/analises/histogramas_salvaguardas.sql`. É o **padrão** do BI. No navegador, a área degradada efetiva é recalculada como a soma dos usos marcados no filtro "uso da terra" (protótipo atualizado em 24/11). Por isso os 8 componentes por uso precisam estar no arquivo |
+| `area_pot_degradada_ha` | **Definição de Pedro (atualizada em 24/11, 20h): agricultura + pastagem + mosaico degradados**, nulos como zero, e **fixa** (sem seletor). Recalcule no BI ou no extrator a partir dos componentes. Os 8 componentes por uso continuam no arquivo, para o filtro de % de uso e os quadros |
 | `apto_status`, `apto_desm_2023`, `apto_desm_2008`, `apto_embargo`, `apto_fpnd`, `apto_uc`, `apto_uc_semucus`, `apto_ti_tq`, `apto_areas_degradadas`, `apto_todos`, `apto_todos_semucus` | Booleanos `apto_*` |
 
 **Conferência obrigatória.** Compare com o Relatório 2. Se não bater, **pare e mostre a diferença** em vez de ajustar a query.
