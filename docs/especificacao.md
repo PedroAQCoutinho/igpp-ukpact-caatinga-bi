@@ -59,6 +59,7 @@ O BI é uma página local para:
     - Diminuiu: E, segue em ASD; F, saiu da ASD.
     - Atalhos: "Só em ASD hoje (A, B, C, E)" e "Só fora de ASD (D, F)".
   - **risco fundiário** com a regra entre parênteses, como no protótipo (fonte: Relatório 2, seção 2.2.3.2);
+  - **uso da terra** (agricultura, pastagem, mosaico de usos, vegetação nativa): o usuário escolhe quais usos compõem a "área potencialmente degradada". O **padrão é agricultura + pastagem** (definição de Pedro, 24/11/2026). Essa soma alimenta o filtro de área mínima, as variáveis, os mapas da aba 4 e as tabelas;
   - área potencialmente degradada mínima (ha);
   - salvaguardas: todos, só aptos ou só não aptos;
   - botão "Limpar filtros de imóvel".
@@ -106,7 +107,7 @@ O BI é uma página local para:
 | `aridez` | `classe` (A–F; nulo vira `'Sem classe'`) |
 | `risco_fund` | `carac_fund` (MUITO_BAIXO … ALTO) |
 | `agri_deg_ha`, `agri_ndeg_ha`, `past_deg_ha`, `past_ndeg_ha`, `mos_deg_ha`, `mos_ndeg_ha`, `vn_deg_ha`, `vn_ndeg_ha` | Colunas `*_degradad*_ha` da tabela de salvaguardas |
-| `area_pot_degradada_ha` | **Definição de Pedro (24/11/2026):** `agricultura_degradada_ha + pastagem_degradada_ha`, nulos como zero, como em `sql/analises/histogramas_salvaguardas.sql`. Os componentes ficam no arquivo para permitir recalcular |
+| `area_pot_degradada_ha` | **Definição de Pedro (24/11/2026):** `agricultura_degradada_ha + pastagem_degradada_ha`, nulos como zero, como em `sql/analises/histogramas_salvaguardas.sql`. É o **padrão** do BI. No navegador, a área degradada efetiva é recalculada como a soma dos usos marcados no filtro "uso da terra" (protótipo atualizado em 24/11). Por isso os 8 componentes por uso precisam estar no arquivo |
 | `apto_status`, `apto_desm_2023`, `apto_desm_2008`, `apto_embargo`, `apto_fpnd`, `apto_uc`, `apto_uc_semucus`, `apto_ti_tq`, `apto_areas_degradadas`, `apto_todos`, `apto_todos_semucus` | Booleanos `apto_*` |
 
 **Conferência obrigatória.** Compare com o Relatório 2. Se não bater, **pare e mostre a diferença** em vez de ajustar a query.
@@ -136,7 +137,7 @@ O BI é uma página local para:
 |---|---|
 | **1. IBGE** | Como no protótipo: números do topo, aviso sobre a pecuária estimada, construtor de mapas (variáveis IBGE), composição por agrupamento, concentração (top 15), composição por UF e Censo 2017 por UF |
 | **2. SICOR** | Como no protótipo: números do topo, **quadro reservado para a série temporal** (a base anual do Felipe é pendente), construtor de mapas (variáveis Sicor), crédito × produção por cadeia, linhas por UF e inclusão |
-| **3. Geo** | Filtros de imóvel, números do topo, construtor de mapas (variáveis geo, incluindo o nº de aptos por critério), tabela por tipologia com grupos, área por aridez e por risco fundiário. **Novo:** seletor de cenário de salvaguardas (com UCUS / sem UCUS) |
+| **3. Geo** | Filtros de imóvel (inclusive uso da terra), números do topo. **Quadro de uso da terra:** área por uso com a parcela degradada e não degradada, e a composição de uso por grupo de tipologia. Construtor de mapas com as variáveis geo: área, degradada e % degradada **por uso**, e o nº de aptos por critério. Tabela por tipologia com grupos e colunas de área degradada por uso. Área por aridez e por risco fundiário. **Novo:** seletor de cenário de salvaguardas (com UCUS / sem UCUS) |
 | **4. Geo + socioeconomia** | Fluxo da seção 2.1 |
 | **5. Console SQL** | Editor com Ctrl+Enter, resultado paginado, "Copiar CSV", painel com tabelas e colunas (descrições do dicionário) e 5 a 8 exemplos prontos. Tabelas expostas: `socio_municipal`, `socio_dicionario`, `imoveis` e `geo_mun_resumo` |
 

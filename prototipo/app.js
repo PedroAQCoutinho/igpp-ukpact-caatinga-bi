@@ -51,29 +51,38 @@ const V={
  cvbp:{l:'Crédito por R$ produzido',u:'centavos',g:'SICOR',ag:'both',f:(r,a)=>a?rat(r[crA(a)],r[prA(a)]):rat(r.cr_volume_rs,r.pr_agropecuaria_rs)},
  n_im:{l:'Imóveis (CAR)',u:'n',g:'Geo',ext:1,geo:1,f:(r,a,g)=>g?.n??null},
  ar_im:{l:'Área dos imóveis',u:'ha',g:'Geo',ext:1,geo:1,f:(r,a,g)=>g?.area??null},
- deg:{l:'Área potencialmente degradada',u:'ha',g:'Geo',ext:1,geo:1,f:(r,a,g)=>g?.deg??null},
+ deg:{l:'Área potencialmente degradada (usos escolhidos)',u:'ha',g:'Geo',ext:1,geo:1,f:(r,a,g)=>g?.deg??null},
  degp:{l:'Área degradada / área dos imóveis',u:'%',g:'Geo',geo:1,f:(r,a,g)=>g?rat(g.deg,g.area):null},
  eleg:{l:'Área degradada em imóveis aptos',u:'ha',g:'Geo',ext:1,geo:1,f:(r,a,g)=>g?.elig??null},
  aptp:{l:'Imóveis aptos (todas as salvaguardas)',u:'%',g:'Geo',geo:1,f:(r,a,g)=>g?rat(g.apt,g.n):null},
+ ...Object.fromEntries([['ag','Agricultura',0],['pa','Pastagem',1],['mo','Mosaico de usos',2],['vn','Vegetação nativa',3]].flatMap(([k,l,i])=>[
+  ['u_'+k,{l:'Área de '+l.toLowerCase(),u:'ha',g:'Geo',ext:1,geo:1,f:(r,a,g)=>g?g.u[i]:null}],
+  ['f_'+k,{l:l+' potencialmente degradada',u:'ha',g:'Geo',ext:1,geo:1,f:(r,a,g)=>g?g.f[i]:null}],
+  ['p_'+k,{l:l+': % degradada',u:'%',g:'Geo',geo:1,f:(r,a,g)=>g?rat(g.f[i],g.u[i]):null}]])),
 };
 const varsOf=gs=>Object.keys(V).filter(k=>gs.includes(V[k].g));
 function varOptions(keys,sel){const gs=[...new Set(keys.map(k=>V[k].g))];return gs.map(g=>`<optgroup label="${g}">`+keys.filter(k=>V[k].g===g).map(k=>opt(k,V[k].l+' ('+V[k].u+')',k===sel)).join('')+'</optgroup>').join('')}
 function agOptions(sel,kind){const ks=Object.keys(AG).filter(k=>kind==='cr'?k!=='nao_classificado':kind==='pr'?k!=='base_forrageira':k!=='nao_classificado'&&k!=='base_forrageira');return opt('','Todos',!sel)+ks.map(k=>opt(k,AG[k],k===sel)).join('')}
 
 // ---------- imóveis (simulados) ----------
+const USOS=[['a','Agricultura','#c9a227'],['p','Pastagem','#8c4a2f'],['m','Mosaico de usos','#d17a3a'],['v','Vegetação nativa','#4f6b55']];
+const DEF_USO=new Set([0,1]); // proposta: agricultura + pastagem (como em histogramas_salvaguardas.sql)
+const z4=()=>[0,0,0,0];
 function aggImoveis(fi,cods){
- const c=IM.cols,w=IM.w,by=new Map(),tip=IM.tip.map(()=>({n:0,area:0,deg:0,elig:0})),ar=Array(6).fill(0),rf=Array(5).fill(0);
+ const c=IM.cols,w=IM.w,by=new Map(),tip=IM.tip.map(()=>({n:0,area:0,deg:0,elig:0,u:z4(),f:z4()})),ar=Array(6).fill(0),rf=Array(5).fill(0),uso=fi?fi.uso:DEF_USO,UA=USOS.map(u=>c['u'+u[0]]),UF=USOS.map(u=>c['f'+u[0]]);
  for(let i=0;i<c.m.length;i++){
   const t=c.t[i];if(cods&&!cods.has(c.m[i]))continue;
+  let dg=0;for(const u of uso)dg+=UF[u][i];
   if(fi){if(!fi.tip.has(t)||!fi.ar.has(c.ar[i])||!fi.rf.has(c.rf[i]))continue;
-   if(fi.degmin!=null&&c.dg[i]<fi.degmin)continue;if(fi.amin!=null&&c.a[i]<fi.amin)continue;if(fi.amax!=null&&c.a[i]>fi.amax)continue;
+   if(fi.degmin!=null&&dg<fi.degmin)continue;
    if(fi.apt==='s'&&!c.ok[i])continue;if(fi.apt==='n'&&c.ok[i])continue;}
-  const k=w[t];let o=by.get(c.m[i]);if(!o){o={n:0,area:0,deg:0,elig:0,apt:0};by.set(c.m[i],o)}
-  o.n+=k;o.area+=k*c.a[i];o.deg+=k*c.dg[i];if(c.ok[i]){o.elig+=k*c.dg[i];o.apt+=k}
-  const T=tip[t];T.n+=k;T.area+=k*c.a[i];T.deg+=k*c.dg[i];if(c.ok[i])T.elig+=k*c.dg[i];
+  const k=w[t];let o=by.get(c.m[i]);if(!o){o={n:0,area:0,deg:0,elig:0,apt:0,u:z4(),f:z4()};by.set(c.m[i],o)}
+  o.n+=k;o.area+=k*c.a[i];o.deg+=k*dg;if(c.ok[i]){o.elig+=k*dg;o.apt+=k}
+  const T=tip[t];T.n+=k;T.area+=k*c.a[i];T.deg+=k*dg;if(c.ok[i])T.elig+=k*dg;
+  for(let u=0;u<4;u++){const a=k*UA[u][i],f=k*UF[u][i];o.u[u]+=a;o.f[u]+=f;T.u[u]+=a;T.f[u]+=f}
   ar[c.ar[i]]+=k*c.a[i];rf[c.rf[i]]+=k*c.a[i];
  }
- return{by,tip,ar,rf};
+ return{by,tip,ar,rf,uso};
 }
 const TIPG=[['af','Agricultura familiar',[0,1,2,3]],['hib','Grupo híbrido',[4,5]],['eco','Potencial Eco Invest',[6,7]]];
 const ARG=[['up','Aumentou a aridez',[[0,'A','já estava em ASD'],[1,'B','entrou na ASD']]],['eq','Estável',[[2,'C','em ASD'],[3,'D','fora da ASD']]],['dn','Diminuiu a aridez',[[4,'E','segue em ASD'],[5,'F','saiu da ASD']]]];
@@ -86,6 +95,7 @@ function ImovelFilters(el,onChange){
  <fieldset><legend>Dinâmica da aridez (ASD = área suscetível à desertificação)</legend>${ARG.map(([k,l,it])=>grp(k,'a-'+k,l,it.map(([i,c,d])=>[i,c,d]),'ar')).join('')}
  <div class="quick"><button data-q="asd">Só em ASD hoje (A, B, C, E)</button><button data-q="noasd">Só fora de ASD (D, F)</button><button data-q="all">Todas</button></div></fieldset>
  <fieldset><legend>Risco fundiário</legend><div class="chk" style="display:grid;gap:4px">${RFL.map(([l,d],i)=>`<label><input type="checkbox" data-g="rf" value="${i}" checked> ${l} <small>(${esc(d)})</small></label>`).join('')}</div></fieldset>
+ <fieldset><legend>Uso da terra: o que entra na área potencialmente degradada</legend><div class="chk">${USOS.map(([k,l,col],i)=>`<label><input type="checkbox" data-g="uso" value="${i}"${DEF_USO.has(i)?' checked':''}> <span class="dot" style="--bc:${col}"></span>${l}</label>`).join('')}</div><p class="hint">Proposta inicial: agricultura + pastagem. Os quadros de uso abaixo mostram os quatro usos de qualquer forma.</p></fieldset>
  <fieldset><legend>Degradação e salvaguardas</legend>
  <div class="fr">Área potencialmente degradada ≥ <input type="number" data-k="degmin" min="0" placeholder="ha"><span class="u">ha</span></div>
  <label class="fr">Salvaguardas <select data-k="apt">${opt('t','Todos os imóveis')}${opt('s','Só aptos em todas')}${opt('n','Só não aptos')}</select></label>
@@ -94,10 +104,10 @@ function ImovelFilters(el,onChange){
  el.addEventListener('change',e=>{const g=e.target.dataset.grp;if(g)el.querySelectorAll(`[data-gr="${g}"]`).forEach(x=>x.checked=e.target.checked);sync();onChange()});
  el.addEventListener('input',e=>{if(e.target.type==='number')onChange()});
  el.addEventListener('click',e=>{const q=e.target.dataset.q;if(q){el.querySelectorAll('[data-g=ar]').forEach(x=>x.checked=q==='all'||(q==='asd')===[0,1,2,4].includes(+x.value));sync();onChange()}
-  if(e.target.dataset.reset!=null){el.querySelectorAll('input[type=checkbox]').forEach(x=>x.checked=true);el.querySelector('[data-k=degmin]').value='';el.querySelector('[data-k=apt]').value='t';sync();onChange()}});
+  if(e.target.dataset.reset!=null){el.querySelectorAll('input[type=checkbox]').forEach(x=>x.checked=x.dataset.g==='uso'?DEF_USO.has(+x.value):true);el.querySelector('[data-k=degmin]').value='';el.querySelector('[data-k=apt]').value='t';sync();onChange()}});
  return{get(){const g=n=>new Set([...el.querySelectorAll(`[data-g=${n}]:checked`)].map(x=>+x.value));const v=el.querySelector('[data-k=degmin]').value;
-  return{tip:g('tip'),ar:g('ar'),rf:g('rf'),degmin:v===''?null:+v,amin:null,amax:null,apt:el.querySelector('[data-k=apt]').value}},
- json(){const f=this.get();return{tipologias:[...f.tip].map(i=>IM.tip[i]),aridez:[...f.ar].map(i=>IM.ar[i]),risco_fundiario:[...f.rf].map(i=>RFL[i][0]),area_degradada_min_ha:f.degmin,salvaguardas:f.apt}}};
+  return{tip:g('tip'),ar:g('ar'),rf:g('rf'),uso:g('uso'),degmin:v===''?null:+v,apt:el.querySelector('[data-k=apt]').value}},
+ json(){const f=this.get();return{tipologias:[...f.tip].map(i=>IM.tip[i]),aridez:[...f.ar].map(i=>IM.ar[i]),risco_fundiario:[...f.rf].map(i=>RFL[i][0]),usos_area_degradada:[...f.uso].map(i=>USOS[i][1]),area_degradada_min_ha:f.degmin,salvaguardas:f.apt}}};
 }
 
 // ---------- filtros municipais ----------
@@ -274,15 +284,22 @@ function geo(){
  const fi=geoF.get();geoAgg=aggImoveis(fi,null);const st=aggImoveis(fi,new Set(universe()));let n=0,a=0,d=0,e=0;
  for(const o of st.by.values()){n+=o.n;a+=o.area;d+=o.deg;e+=o.elig}
  $('k-geo').innerHTML=kpi(nf0.format(n),'Imóveis na seleção')+kpi(nf0.format(a)+' ha','Área dos imóveis')+kpi(nf0.format(d)+' ha','Área potencialmente degradada')+kpi(nf0.format(e)+' ha','Degradada em imóveis aptos');
- tipTable($('tip-geo'),st.tip);
+ tipTable($('tip-geo'),st.tip,st.uso);usoBlock(st);
  const ar=st.ar,am=Math.max(...ar,1),AC=['#b5543a','#b5543a','#8a8f8c','#8a8f8c','#3d6e8f','#3d6e8f'];$('ar-geo').innerHTML=ARL.map((l,i)=>bar(l,100*ar[i]/am,nf0.format(ar[i])+' ha',AC[i])).join('');
  const rf=st.rf,rm=Math.max(...rf,1);$('rf-geo').innerHTML=RFL.map(([l,d],i)=>bar(`${l} (${d})`,100*rf[i]/rm,nf0.format(rf[i])+' ha')).join('');
 }
-function tipTable(el,t){const add=(a,x)=>({n:a.n+x.n,area:a.area+x.area,deg:a.deg+x.deg,elig:a.elig+x.elig}),Z={n:0,area:0,deg:0,elig:0},T=t.reduce(add,Z);
- const tr=(l,x,c='',st='')=>`<tr${c}${st}><td>${l}</td><td>${nf0.format(x.n)}</td><td>${nf0.format(x.area)}</td><td>${nf0.format(x.deg)}</td><td>${pc(x.deg,T.deg)}</td><td>${pc(x.deg,x.area)}</td><td>${nf0.format(x.elig)}</td></tr>`;
+function tipTable(el,t,uso){const add=(a,x)=>({n:a.n+x.n,area:a.area+x.area,deg:a.deg+x.deg,elig:a.elig+x.elig,f:a.f.map((v,i)=>v+x.f[i])}),Z={n:0,area:0,deg:0,elig:0,f:z4()},T=t.reduce(add,Z);
+ const us=[...uso].sort();
+ const tr=(l,x,c='',st='')=>`<tr${c}${st}><td>${l}</td><td>${nf0.format(x.n)}</td><td>${nf0.format(x.area)}</td><td>${nf0.format(x.deg)}</td>${us.map(u=>`<td>${nf0.format(x.f[u])}</td>`).join('')}<td>${pc(x.deg,T.deg)}</td><td>${pc(x.deg,x.area)}</td><td>${nf0.format(x.elig)}</td></tr>`;
  const CL={af:'#4f6b55',hib:'#c4761a',eco:'#3d6e8f'};
- el.innerHTML='<thead><tr><th>Tipologia</th><th>Imóveis</th><th>Área (ha)</th><th>Área pot. degradada (ha)</th><th>% do total degradado</th><th>% da área do grupo</th><th>Degradada em aptos (ha)</th></tr></thead><tbody>'+
+ el.innerHTML=`<thead><tr><th>Tipologia</th><th>Imóveis</th><th>Área (ha)</th><th>Área pot. degradada (ha)</th>${us.map(u=>`<th>…em ${USOS[u][1].toLowerCase()}</th>`).join('')}<th>% do total degradado</th><th>% da área do grupo</th><th>Degradada em aptos (ha)</th></tr></thead><tbody>`+
   TIPG.map(([k,l,ix])=>tr(`<span class="dot"></span>${l}`,ix.reduce((a,i)=>add(a,t[i]),Z),' class="gt"',` style="--bc:${CL[k]}"`)+ix.map(i=>tr('&nbsp;&nbsp;&nbsp;&nbsp;'+IM.tip[i],t[i])).join('')).join('')+tr('Total',T,' class="sel"')+'</tbody>'}
+function usoBlock(st){ // quadro de uso da terra
+ const U=st.tip.reduce((a,x)=>a.map((v,i)=>v+x.u[i]),z4()),F=st.tip.reduce((a,x)=>a.map((v,i)=>v+x.f[i]),z4()),mx=Math.max(...U,1);
+ $('uso-geo').innerHTML=USOS.map(([k,l,col],i)=>`<div class="row"><span><span class="dot" style="--bc:${col}"></span>${l}${st.uso.has(i)?' ●':''}</span><div class="track"><i style="width:${100*F[i]/mx}%;background:#b5543a"></i><i style="width:${100*(U[i]-F[i])/mx}%;background:${col};opacity:.55"></i></div><span class="v">${nf0.format(U[i])} ha · ${pc(F[i],U[i])}</span></div>`).join('');
+ $('usog-geo').innerHTML=TIPG.map(([g,l,ix])=>{const u=ix.reduce((a,i)=>a.map((v,j)=>v+st.tip[i].u[j]),z4()),t=u.reduce((a,b)=>a+b,0)||1;
+  return `<div class="row"><span>${l}</span><div class="track">${USOS.map(([k,lb,col],j)=>`<i title="${lb}: ${pc(u[j],t)}" style="width:${100*u[j]/t}%;background:${col}"></i>`).join('')}</div><span class="v">${pc(u[1],t)} pasto</span></div>`}).join('');
+}
 // ---------- aba 4 ----------
 let intU,intF,intSt={m:'q5',p:'lr',fx:''};
 function integ(){
@@ -293,7 +310,7 @@ function integ(){
  drawMap($('m1'),o1);drawMap($('m2'),o2);$('l1').innerHTML=legendHTML(o1);$('l2').innerHTML=legendHTML(o2);
  let n=0,d=0;for(const c of uni){n+=v1.get(c);d+=v2.get(c)}
  $('sum-int').textContent=`${uni.size} municípios no universo${fs.length?' ('+flabel(fs)+')':''} · ${nf0.format(n)} imóveis · ${nf0.format(d)} ha potencialmente degradados`;
- tipTable($('tip-int'),agg.tip);
+ tipTable($('tip-int'),agg.tip,agg.uso);
  intSt.view={uf:UF||null,universo_municipios:intU.json(),filtros_imovel:intF.json(),legenda:intSt.m,limites_fixos:intSt.m==='fx'?intSt.fx:null,paleta:intSt.p};
 }
 
