@@ -147,6 +147,31 @@ textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .lnk{background:none;border:0;padding:0;color:var(--main);cursor:pointer;font:inherit;font-size:14px;font-family:ui-monospace,Menlo,Consolas,monospace}
 #load{padding:24px max(4vw,16px);color:var(--mut)}
 @media(max-width:860px){.sqlgrid{grid-template-columns:1fr}}
+/* feedback */
+.fb-btn{position:fixed;right:18px;bottom:18px;z-index:40;min-height:48px;padding:0 18px;border:0;border-radius:24px;background:var(--main);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.fb-ov{position:fixed;inset:0;z-index:50;background:rgba(10,15,12,.45);display:grid;place-items:center;padding:16px}
+.fb{background:var(--bg);color:var(--ink);border-radius:12px;width:min(720px,100%);max-height:calc(100vh - 32px);overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.fb header{padding:18px 22px 10px;border-bottom:1px solid var(--line);display:flex;align-items:start;gap:12px}
+.fb header h2{font-size:22px;margin:0;color:var(--main)}
+.fb header p{margin:2px 0 0;font-size:14px;color:var(--mut)}
+.fb header button{margin-left:auto;border:0;background:none;font-size:22px;cursor:pointer;min-width:40px;min-height:40px;color:var(--mut)}
+.fb .body{padding:16px 22px;display:grid;gap:14px}
+.fb .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.fb label.f{display:grid;gap:5px;font-weight:600;font-size:15px;align-content:start}
+.fb .req{color:#c0392b;font-weight:600}
+.fb textarea{font:inherit;font-size:16px;min-height:100px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg);color:var(--ink);resize:vertical}
+.fb input[type=text],.fb select{width:100%}
+.fb .att{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:8px}
+.fb .att .top{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fb .att .top b{font-size:16px}
+.fb .att .top .act{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.fb .att .act button{min-height:38px;padding:0 12px;border:1px solid var(--line);background:var(--bg);border-radius:6px;cursor:pointer;font-size:15px}
+.fb canvas{max-width:100%;max-height:340px;width:auto;justify-self:start;border:1px solid var(--line);border-radius:6px;cursor:crosshair;touch-action:none}
+.fb footer{padding:12px 22px 18px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.fb footer .send{margin-left:auto;min-height:46px;padding:0 20px;border:0;border-radius:8px;background:var(--main);color:#fff;font-weight:700;font-size:16px;cursor:pointer}
+.fb footer .send:disabled{opacity:.5;cursor:not-allowed}
+.fb .msg{font-size:14px}
+.fb .rec{color:#c0392b;font-weight:700}
 [hidden]{display:none!important}
 @media(max-width:860px){.mb{grid-template-columns:1fr}}
 @media(max-width:600px){.row{grid-template-columns:100px minmax(0,1fr) 78px;font-size:14px}.map{min-height:360px}}
@@ -219,6 +244,25 @@ textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 </div>
 <div id="p-sql" class="pane" hidden></div>
 </main>
+<!-- caixa de feedback: o botão só aparece se api/feedback/saude responder (seção 10) -->
+<button class="fb-btn" id="fb-open" aria-haspopup="dialog" hidden>Feedback</button>
+<div class="fb-ov" id="fb-ov" hidden><div class="fb" role="dialog" aria-modal="true" aria-labelledby="fb-t">
+<header><div><h2 id="fb-t">Enviar feedback</h2><p>Conte à equipe do BI Caatinga sem sair da tela.</p></div><button id="fb-x" aria-label="Fechar">×</button></header>
+<div class="body">
+<div class="two">
+<label class="f">O que você quer contar?<select id="fb-cat"><option value="problema">Encontrei um problema</option><option value="melhoria">Isso poderia melhorar</option><option value="duvida">Tenho uma dúvida</option><option value="elogio">Isto funcionou bem</option></select></label>
+<label class="f"><span>Seu nome <span class="req">(obrigatório)</span></span><input type="text" id="fb-nome" placeholder="Nome e instituição" autocomplete="name"><span class="hint">O BI não tem login: o nome é o único jeito de saber quem relatou e a quem responder.</span></label>
+</div>
+<label class="f">Descreva com suas palavras<textarea id="fb-txt" placeholder="O que você tentou fazer? O que aconteceu? O que esperava encontrar?"></textarea><span class="hint">Você pode escrever, gravar um áudio ou usar os dois.</span></label>
+<div class="att"><div class="top"><b>Captura anotada</b><span class="hint">opcional · revise a imagem antes de enviar</span><div class="act"><button type="button" id="fb-cap">Capturar esta tela</button><button type="button" id="fb-img">Abrir imagem</button><button type="button" id="fb-undo" hidden>Desfazer marca</button><button type="button" id="fb-rmimg" hidden>Remover</button></div></div>
+<p class="hint" id="fb-caph">O navegador vai pedir para escolher esta guia. Depois arraste sobre a imagem para marcar o ponto. Também dá para colar um print (Ctrl+V).</p>
+<canvas id="fb-cv" hidden></canvas><input type="file" id="fb-imgf" accept="image/*" hidden></div>
+<div class="att"><div class="top"><b>Áudio</b><span class="hint">opcional · até 2 minutos</span><div class="act"><button type="button" id="fb-rec">Gravar áudio</button><button type="button" id="fb-aud">Enviar arquivo</button></div></div>
+<p class="hint" id="fb-audh">Nenhum áudio anexado.</p><audio id="fb-play" controls hidden></audio><input type="file" id="fb-audf" accept="audio/*" hidden></div>
+<p class="hint">O BI anexa sozinho a aba, os filtros e a visão atuais, para a equipe reproduzir o que você via. O relato e os anexos ficam no servidor do BI e são vistos só pela equipe do projeto.</p>
+</div>
+<footer><span class="msg" id="fb-msg" role="status"></span><button class="send" id="fb-send" disabled>Enviar feedback</button></footer>
+</div></div>
 <script src="vendor/arrow/Arrow.es2015.min.js"></script>
 <script type="importmap">{"imports":{"apache-arrow":"./vendor/arrow/arrow-shim.mjs"}}</script>
 <script type="module" src="js/app.js"></script>

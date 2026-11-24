@@ -3,6 +3,7 @@
 import { init, q, status, dataUrl } from './db.js';
 import { TIP, AR, RF, CRIT, USOS, DEF_USO, aggAll, sumBy } from './geo.js';
 import { initConsole } from './console.js';
+import { initFeedback } from './feedback.js';
 
 // ---------- utilidades ----------
 const $ = id => document.getElementById(id);
@@ -391,6 +392,16 @@ async function renderAll() {
   if (vis === 'p-ibge') mbI.render(); if (vis === 'p-sicor') mbS.render();
   if (vis === 'p-geo') { await geo(); mbG.render() } if (vis === 'p-int') await integ()
 }
+// Visão da aba aberta, anexada ao feedback (seção 10.1) para a equipe reproduzir o que o usuário via
+function visaoAtual() {
+  const vis = document.querySelector('.pane:not([hidden])')?.id;
+  if (vis === 'p-ibge') return { agrupamento: $('ag-ibge').value || null, mapa: mbI?.view ?? null };
+  if (vis === 'p-sicor') return { agrupamento: $('ag-sicor').value || null, mapa: mbS?.view ?? null };
+  if (vis === 'p-geo') return { filtros_imovel: geoF?.json() ?? null, mapa: mbG?.view ?? null };
+  if (vis === 'p-int') return intSt.view ?? null;
+  if (vis === 'p-sql') return { sql: (document.querySelector('#p-sql [data-sql]')?.value || '').slice(0, 4000) };
+  return null;
+}
 function semImoveis() {
   const msg = `<div class="warn"><b>Dados por imóvel indisponíveis.</b> ${esc(status.imoveisMsg)} Esse arquivo não fica no git: é gerado por Pedro com <code>scripts/extrair_imoveis.py</code> ou distribuído à parte. Copie-o para <code>data/local/imoveis.parquet</code> e recarregue a página.${status.resumo ? ' Nas abas 1 e 2, as variáveis Geo usam o resumo municipal versionado (<code>data/geo_mun_resumo.parquet</code>).' : ''}</div>`;
   for (const id of ['p-geo', 'p-int']) { const p = $(id); [...p.children].forEach(c => c.hidden = true); p.insertAdjacentHTML('afterbegin', msg) }
@@ -440,6 +451,7 @@ async function main() {
   if (!status.imoveis) semImoveis();
   initConsole($('p-sql'));
   $('load').hidden = true;
+  initFeedback(visaoAtual); // não bloqueia: o botão aparece só se o receptor responder
   await renderAll();
   console.info(`[BI] pronto em ${Math.round(performance.now() - t0)} ms; imóveis: ${status.imoveis}`);
 }

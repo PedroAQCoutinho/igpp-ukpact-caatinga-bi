@@ -27,6 +27,14 @@
 		X-Robots-Tag "noindex, nofollow"
 		-Server
 	}
+	# Feedback (seção 10): receptor no host da VM, atrás da mesma senha. host.docker.internal aponta para o
+	# gateway da rede caddy_default (extra_hosts no compose), onde o receptor escuta (BIND).
+	handle /api/feedback* {
+		request_body {
+			max_size 22MB
+		}
+		reverse_proxy host.docker.internal:8090
+	}
 	# Arquivos .gz gerados no envio (publicar_vm.sh): nada é comprimido na hora (VM pequena)
 	file_server {
 		precompressed gzip

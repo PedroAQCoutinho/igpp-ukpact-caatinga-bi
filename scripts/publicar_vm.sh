@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publica o BI na VM Oracle (site estático servido pelo Caddy do agentes.chat, com senha).
+# Publica o BI na VM Oracle (site estático servido pelo Caddy da VM, com senha).
 # Uso: scripts/publicar_vm.sh            (envia os arquivos e testa)
 # Para trocar o domínio: mude BI_HOST aqui E no environment do caddy (~/caddy/docker-compose.yml na VM).
 # Ver meu-contexto/infra/vm-oracle.md, seção "BI Caatinga".
