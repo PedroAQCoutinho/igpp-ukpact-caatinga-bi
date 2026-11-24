@@ -1,6 +1,6 @@
 // BI Caatinga — porte do prototipo/app.js para dados reais (DuckDB-WASM + Parquet).
 // Comportamento e visual seguem o protótipo aprovado; mudanças de dados estão comentadas.
-import { init, q, status } from './db.js';
+import { init, q, status, dataUrl } from './db.js';
 import { TIP, AR, RF, CRIT, CEN, USOS, DEF_USO, aggAll, sumBy } from './geo.js';
 import { initConsole } from './console.js';
 
@@ -378,7 +378,7 @@ async function main() {
   await init();
   $('load').textContent = 'Lendo os dados…';
   R = await q('SELECT * FROM socio_municipal ORDER BY codmun');
-  const g = await (await fetch('data/malha_municipios.json')).json();
+  const g = await (await fetch(dataUrl('data/malha_municipios.json'))).json();
   for (const [c, o] of Object.entries(g.mun)) { POLY[c] = o.r; AREA.set(c, o.a) }
   BIOMA = g.bioma || [];
   for (const r of R) RM.set(r.codmun, r);

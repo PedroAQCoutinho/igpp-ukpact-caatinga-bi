@@ -1,0 +1,31 @@
+# Bloco do BI Caatinga para o Caddyfile do container `caddy` (override do agentes.chat na VM Oracle).
+# O host vem da variável BI_HOST (environment do serviço caddy no docker-compose.override.yml).
+# Usuário e hash bcrypt vêm de ~/.agentes-segredos/bi-caddy.env (env_file, 600): BI_USER e BI_HASH.
+{$BI_HOST} {
+	basic_auth {
+		{$BI_USER} {$BI_HASH}
+	}
+	root * /srv/bi-caatinga
+	encode zstd gzip
+	# Bibliotecas versionadas por pasta/arquivo: cache de 30 dias
+	@vendor path /vendor/*
+	header @vendor Cache-Control "private, max-age=2592000, immutable"
+	# Dados: o BI pede com ?v=<hash do manifest>, então podem ficar 30 dias em cache
+	@dados {
+		path /data/*
+		query v=*
+	}
+	header @dados Cache-Control "private, max-age=2592000"
+	# manifest, HTML e JS: sempre revalidar (troca de versão é imediata)
+	@resto not path /vendor/*
+	header @resto ?Cache-Control "no-cache"
+	@wasm path *.wasm
+	header @wasm Content-Type application/wasm
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+		-Server
+	}
+	file_server
+}

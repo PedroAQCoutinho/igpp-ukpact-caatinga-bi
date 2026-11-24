@@ -5,6 +5,13 @@ const base = new URL('..', import.meta.url);
 const abs = p => new URL(p, base).href;
 let db = null, conn = null;
 export const status = { imoveis: false, resumo: false, imoveisMsg: '' };
+// Versão dos dados = hash do manifest.json (sempre revalidado). Os arquivos de dados levam ?v=<versão>,
+// então podem ficar em cache longo no navegador e no servidor sem servir versão velha.
+let VER = '0';
+export const dataUrl = p => abs(p) + '?v=' + VER;
+async function versao() {
+  try { const t = await (await fetch(abs('data/manifest.json'), { cache: 'no-cache' })).text(); let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; VER = (h >>> 0).toString(36); } catch { }
+}
 
 // Converte BigInt/Decimal do Arrow em Number para o resto do app
 const num = v => typeof v === 'bigint' ? Number(v) : v;
@@ -24,10 +31,11 @@ export async function qTable(sql) { return conn.query(sql); }
 export { toRows };
 
 async function exists(p) {
-  try { const r = await fetch(abs(p), { method: 'HEAD', cache: 'no-store' }); return r.ok; } catch { return false; }
+  try { const r = await fetch(dataUrl(p), { method: 'HEAD' }); return r.ok; } catch { return false; }
 }
 
 export async function init() {
+  await versao();
   const bundle = { mainModule: abs('vendor/duckdb/duckdb-eh.wasm'), mainWorker: abs('vendor/duckdb/duckdb-browser-eh.worker.js') };
   const worker = new Worker(bundle.mainWorker);
   db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING), worker);
@@ -41,7 +49,7 @@ export async function init() {
   await conn.query(`LOAD parquet`);
 
   const reg = async (name, path) => {
-    const buf = new Uint8Array(await (await fetch(abs(path), { cache: 'no-store' })).arrayBuffer());
+    const buf = new Uint8Array(await (await fetch(dataUrl(path))).arrayBuffer());
     await db.registerFileBuffer(name, buf);
   };
   await reg('socio_municipal.parquet', 'data/socio_municipal.parquet');
