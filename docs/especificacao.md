@@ -167,3 +167,26 @@ Se o tempo apertar, **corte nesta ordem**: mapa do bioma, Jenks, cenário UCUS, 
   - o que significa "AEH"?
   - pedir a base anual para a série temporal.
 - Distribuição de `data/local/imoveis.parquet` aos colegas, por exemplo pelo Drive. Hoje o BI completo roda só na máquina de Pedro.
+
+## 9. Publicação na VM Oracle (depois da reunião de 25/11)
+
+**Decisão de Pedro (24/11/2026):** publicar o BI na VM Oracle pessoal, com senha, para a equipe acessar pelo navegador sem instalar nada. A mistura entre pessoal e profissional é intencional nesta fase. Só comece **depois** que Pedro aprovar o BI rodando localmente.
+
+- **Onde:** `https://bi.147-15-67-178.sslip.io`, servido pelo **mesmo Caddy** do agentes.chat, com override no mesmo padrão do Radar de Leilões (`meu-contexto/pessoal/radar/leiloes/README.md` e `infra/vm-oracle.md`).
+  - Não suba container novo: a VM tem 1 GB de RAM. O site é estático; o processamento acontece no navegador de cada usuário.
+  - Antes de mexer, leia o override atual e mantenha o site do Radar e o agentes.chat funcionando. Reinicie só o container `caddy` e confira que os três sites respondem.
+- **Senha (basic auth):**
+  - Usuário e senha compartilhados com a equipe, **escolhidos por Pedro**. Ele digita a senha num comando interativo na VM, sem passar pelo chat nem por logs.
+  - O hash bcrypt fica em `~/.agentes-segredos/bi-caddy.env` (600). Registre só o nome em `meu-contexto/infra/credenciais.md`.
+- **Arquivos:**
+  - `scripts/publicar_vm.sh` envia o site com `rsync`/`scp` para `~/sites/bi-caatinga/` na VM, incluindo `data/local/imoveis.parquet`, que não passa pelo GitHub.
+  - Não publique `prototipo/imoveis_simulados.json`.
+- **Peso para os usuários:**
+  - Reduza `imoveis.parquet`: compressão zstd, tipos enxutos (float32, inteiros pequenos, dicionário nas categorias), só as colunas usadas. A meta é ≤ 60 MB.
+  - Configure no Caddy cache longo para Parquet, malha e `vendor/`, e o MIME correto para `.wasm`.
+- **Aceite:**
+  - sem senha → 401; com senha → 200;
+  - o BI abre e filtra num computador fora da rede de Pedro;
+  - radar e agentes.chat continuam no ar;
+  - a VM segue com memória folgada (`free -h` antes e depois).
+- **Registro:** atualize `meu-contexto/infra/vm-oracle.md` (site, caminhos, como atualizar), `infra/credenciais.md` e `infra/diario.md`.
