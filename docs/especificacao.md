@@ -154,7 +154,7 @@ O BI é uma página local para:
 5. Abas 3 e 4 com os dados reais.
 6. README e teste do zero (`git clone`, sem `data/local/`), para que o BI abra e avise de forma clara que falta o arquivo de imóveis.
 
-Se o tempo apertar, **corte nesta ordem**: mapa do bioma, Jenks, cenário UCUS, console SQL avançado. Nunca corte a conferência de totais.
+Se o tempo apertar, **corte nesta ordem**: mapa do bioma, Jenks, console SQL avançado. Nunca corte a conferência de totais.
 
 ## 7. Critérios de aceite
 
