@@ -1,0 +1,6 @@
+# Dados por imóvel: gerados localmente por scripts/extrair_imoveis.py, nunca versionados
+data/local/
+*.env
+.env*
+__pycache__/
+.DS_Store

@@ -1,138 +1,169 @@
 # Especificação — BI exploratório iGPP - UK Pact - Caatinga
 
-Versão 1, de 24/11/2026. Uso: reunião presencial de 25/11/2026 sobre o próximo relatório. Pedro conduz a tela e a equipe acompanha e propõe queries ao vivo.
+**Versão 2, 24/11/2026.** Substitui a v1. A interface foi definida e aprovada por Pedro a partir do protótipo em `prototipo/`. Uso imediato: reunião presencial de 25/11/2026 sobre o próximo relatório. Pedro conduz a tela, e a equipe propõe recortes e queries ao vivo.
 
 ## 1. Objetivo
 
-O BI é uma página local que permite:
+O BI é uma página local para:
 
-- explorar o diagnóstico socioeconômico (IBGE e SICOR) e o diagnóstico territorial (CAR, tipologias, uso, degradação, clima, situação fundiária e salvaguardas);
-- cruzar os dois diagnósticos por município;
-- rodar **SQL livre** durante a reunião.
+- explorar o diagnóstico socioeconômico (IBGE e Sicor) e o territorial (CAR, tipologias, uso, degradação, aridez, risco fundiário e salvaguardas);
+- cruzar os dois por município;
+- **parametrizar o projeto**: cada combinação de recorte, variável e legenda vira uma "visão" reproduzível.
 
-## 2. Arquitetura (decidida)
+## 2. Ponto de partida: o protótipo aprovado
 
-- **Página estática**, `index.html` com módulos ES em `js/`. Não há etapa de build nem backend.
-- **DuckDB-WASM** no navegador consulta os arquivos Parquet de `data/`. Todos os gráficos são queries DuckDB.
-- **Bibliotecas copiadas para `vendor/`**, para funcionar sem internet:
-  - DuckDB-WASM: `@duckdb/duckdb-wasm` e os bundles `mvp`/`eh` com os workers;
-  - um pacote de gráficos, por exemplo Vega + Vega-Lite + vega-embed, ou Observable Plot.
-  - Prefira poucas dependências. Registre as versões em `vendor/VERSIONS.md`.
-- **Execução:** `run.sh` (Linux/Mac) e `run.bat` (Windows) sobem `python3 -m http.server` na pasta e abrem o navegador. Não funciona por `file://`.
-- **Banco:** nenhuma conexão durante o uso. Os dados chegam por extrações agregadas feitas antes (seção 4).
-- **Visual:** sóbrio e legível em projetor. Use fonte grande, sem enfeites, com números no formato pt-BR (`1.234.567,8`) e moeda em `R$`.
+`prototipo/` roda com `cd prototipo && python3 -m http.server`. Ele é a **referência de interface**, e o BI final mantém o comportamento e o visual dele.
 
-## 3. Estrutura do repositório
+**O que muda no final:**
 
-```
-index.html
-js/                       app, uma aba por módulo, utilitários de query e gráficos
-css/
-vendor/                   bibliotecas copiadas + VERSIONS.md
-data/
-  raw/tabelao_municipal.xlsx    base de Felipe (entrada, já versionada)
-  socio_municipal.parquet
-  socio_dicionario.parquet
-  geo_*.parquet
-  manifest.json           tabelas, descrições, origem, linhas, data e totais
-extract/                  SQL de extração do curupira (só SELECT)
-scripts/
-  converter_socio.py      xlsx -> parquet
-  extrair_geo.py          roda extract/*.sql via service=curupira e grava parquet
-  checar_dados.py         bloqueia cod_imovel, geom e outras colunas proibidas
-run.sh / run.bat
-README.md                 como clonar e abrir (para colegas)
-```
+- a camada de dados: dados reais, com DuckDB-WASM e Parquet;
+- a malha municipal oficial;
+- o console SQL.
+
+**Avisos sobre os arquivos do protótipo:**
+
+- `prototipo/imoveis_simulados.json` é **fictício** (cerca de 60 mil imóveis com peso). Não use esse arquivo no BI final.
+- `prototipo/geo.json` é uma malha provisória, simplificada à mão a partir de `tbrugz/geodata-br`. Substitua pela malha oficial.
+- `prototipo/data.json` é a base real do Felipe. Os valores estão em **R$ mil**.
+
+### 2.1 Requisitos de interface (do protótipo, obrigatórios)
+
+**Construtor de mapas.** É o mesmo componente nas abas 1, 2 e 3. Fica num painel de controles à esquerda do mapa, organizado em passos coloridos que abrem em sequência. Cada passo tem um botão **Limpar** visível, e há um **Limpar tudo**.
+
+| Passo | Cor | Conteúdo |
+|---|---|---|
+| 1. Recorte de municípios | verde `#4f6b55` | Escolha entre **Todos** e **Seleção personalizada**. A seleção personalizada é uma lista de condições combinadas com E: variável, agrupamento quando a variável tiver, operador, valor e unidade. Pode usar qualquer variável municipal das três bases. Quem fica fora do recorte aparece em cinza |
+| 2. Variável e unidade | ocre `#c4761a` | Só abre depois do passo 1. Escolha da variável e da normalização: absoluto, por estabelecimento ou por km². A normalização vale só para variáveis extensivas |
+| 3. Legenda | azul `#3d6e8f` | Só abre depois do passo 2. Classificação em quartis, quintis, decis, intervalos iguais, quebras naturais (Jenks) ou limites fixos digitados. Paletas: laranja → roxo (padrão, sem juízo de valor), cinza → azul, verde → vermelho e vermelho → verde. Opção "classes calculadas só no recorte" |
+| 4. Hachura | roxo `#7a5a8c` | Fica **fechada**. Abre só pelo botão "Adicionar variável secundária?" e tem uma condição municipal. Os municípios que atendem a condição recebem hachura sobre a cor. Botão **Remover** |
+
+**Regras gerais do construtor:**
+
+- Sem escolhas, o construtor mostra o **mapa em branco** com os limites municipais.
+- **Ordem:** legenda e tabelas vão sempre **do maior para o menor**.
+- **Cores fixas na legenda:**
+  - "zero" (o município consta na fonte com valor nulo);
+  - "sem dado na fonte" (célula vazia na base do Felipe);
+  - "fora do recorte".
+- **Junto do mapa:**
+  - legenda com a contagem de municípios por classe;
+  - tabela dos municípios do recorte;
+  - botões "Copiar visão (JSON)" e "Copiar tabela (CSV)";
+  - *dica de hover* com município, UF e valor.
+- **Agrupamento produtivo:** fica num seletor no topo das abas 1 e 2 e vale para os números do topo, rankings, destaques e mapa. Os quadros que não variam por agrupamento (Censo, linhas de crédito, mulheres) dizem isso.
+- **Filtros de imóvel** (abas 3 e 4):
+  - **tipologia** em três grupos coloridos, cada um selecionável inteiro (marca todas as tipologias do grupo) ou por tipologia: agricultura familiar (AST, PCT, PRONAF, PRONAF B), grupo híbrido (Minifúndio, Pequeno) e potencial Eco Invest (Médio, Grande);
+  - **dinâmica da aridez** agrupada:
+    - Aumentou: A, já em ASD; B, entrou na ASD.
+    - Estável: C, em ASD; D, fora da ASD.
+    - Diminuiu: E, segue em ASD; F, saiu da ASD.
+    - Atalhos: "Só em ASD hoje (A, B, C, E)" e "Só fora de ASD (D, F)".
+  - **risco fundiário** com a regra entre parênteses, como no protótipo (fonte: Relatório 2, seção 2.2.3.2);
+  - área potencialmente degradada mínima (ha);
+  - salvaguardas: todos, só aptos ou só não aptos;
+  - botão "Limpar filtros de imóvel".
+
+**Aba 4, Geo + socioeconomia (fluxo fixo):**
+
+1. **Recorte de municípios** (Todos ou personalizado). Ele **reduz o universo**: só os municípios do recorte são desenhados, e o mapa enquadra apenas eles. Variáveis geo usadas no recorte contam todos os imóveis do município.
+2. **Filtros de imóvel**, que definem o que é contado.
+3. **Dois mapas** com legenda e paleta compartilhadas: nº de imóveis à esquerda e área potencialmente degradada (ha) à direita.
+4. **Tabela** da área potencialmente degradada por tipologia, com subtotais por grupo e o total da seleção.
+5. "Copiar visão (JSON)".
+
+## 3. Arquitetura
+
+- **Página estática:** `index.html` com módulos ES em `js/`. Pode partir do `prototipo/app.js` e dividi-lo em módulos. Não há build nem backend.
+- **DuckDB-WASM** no navegador. Todas as agregações são SQL sobre Parquet:
+  - os filtros de imóvel viram `WHERE`;
+  - as agregações por município são `GROUP BY codmun`.
+- **Cache:** guarde a agregação "todos os imóveis", que é usada nos recortes.
+- **Bibliotecas copiadas para `vendor/`**, para funcionar sem internet: `@duckdb/duckdb-wasm` com os bundles e workers. Registre as versões em `vendor/VERSIONS.md`. O protótipo não usa biblioteca de gráfico nem de mapa; mantenha assim, ou use d3-geo copiado para `vendor/` se precisar de projeção melhor.
+- **Execução:** `run.sh` ou `run.bat` (já existem). Não funciona em `file://`.
+- **Banco:** nenhuma conexão durante o uso.
 
 ## 4. Dados
 
-### 4.1 Socioeconômico (`data/raw/tabelao_municipal.xlsx`)
+### 4.1 Socioeconômico (versionado)
 
-- **Origem:** Felipe Gandra (iGPP), 19/11/2026. A documentação completa está em `meu-contexto/igpp/uk-pact/caatinga/dados/base-municipal-bi.md`.
-- **Abas:**
-  - `dados`: 1.095 linhas, uma por município, chave `codmun` (código IBGE de 7 dígitos);
-  - `dicionario`: colunas, descrição, unidade, período e fonte.
-- **Prefixos:**
-  - `cr_`: Sicor/BCB, 2019–2024;
-  - `pr_`: PAM/PEVS/PPM, 2019–2024;
-  - `ca_`: Censo Agro 2017;
-  - `cx_`: cruzamentos;
-  - `cr_ag_*` e `pr_ag_*`: agrupamentos produtivos, em formato largo.
-- **Reais:** IPCA, em R$ de 2025.
-- **Vazio ≠ zero:** vazio quer dizer que o município não consta na fonte, e zero quer dizer que consta com valor nulo. Preservar NULL × 0 na conversão.
-- **Converter para Parquet:**
-  - Converta para `socio_municipal.parquet` com `codmun` como texto de 7 dígitos.
-  - Gere também uma tabela longa `socio_agrupamento(codmun, agrupamento, fonte, metrica, valor)` a partir de `cr_ag_*` e `pr_ag_*`, que facilita gráficos e SQL.
-- **Alertas para mostrar na interface:**
-  - Os agrupamentos de crédito e de produção **não coincidem**: crédito tem `base_forrageira`, produção tem `nao_classificado`.
-  - As três linhas de crédito somam 98,8% de `cr_volume_rs`.
-  - Os períodos são diferentes: 2019–2024 contra o Censo de 2017.
+- **Entrada:** `data/raw/tabelao_municipal.xlsx`. Documentação em `meu-contexto/igpp/uk-pact/caatinga/dados/base-municipal-bi.md`.
+- **Saídas** (por `scripts/converter_socio.py`):
+  - `data/socio_municipal.parquet`, com `codmun` como texto de 7 dígitos, reais em R$ e **NULL ≠ 0** preservado;
+  - `data/socio_dicionario.parquet`.
 
-### 4.2 Territorial (curupira, `service=curupira`, só leitura)
+### 4.2 Imóveis (fora do git: `data/local/imoveis.parquet`)
 
-- **Tabela-base:** `proj_ukpact_caatinga.bi_ca_car_20260106_salvaguardas_aptos`. Os campos estão em `meu-contexto/.../dados/salvaguardas.md`:
-  - `tipologia_car2`, `porte_imovel`, `area_ha`;
-  - critérios `apto_*` e `apto_todos` / `apto_todos_semucus`;
-  - áreas de uso degradado e não degradado (`*_degradad*_ha`);
-  - `carac_fund` (risco fundiário) e `classe` (aridez, A–F).
-- **Município:** vem de `proj_ukpact_caatinga.car_20260901_caatinga`.
+- **Geração:** `scripts/extrair_imoveis.py`, com `service=curupira`, só `SELECT`. A SQL fica em `extract/` e é aprovada por Pedro antes de rodar. O `psql`/Python grava direto no arquivo, sem imprimir linhas.
+- **Formato:** uma linha por imóvel, **sem `cod_imovel` e sem geometria**, áreas arredondadas a 0,1 ha.
+- **Base:** `proj_ukpact_caatinga.bi_ca_car_20260106_salvaguardas_aptos`, com o município vindo de `car_20260901_caatinga`.
 
-**Etapa 0, inspeção de metadados (primeira execução):**
+| Coluna | Origem / regra |
+|---|---|
+| `codmun` (texto, 7 dígitos), `uf` | CAR. **Descubra a coluna na etapa 0.** Se o CAR não tiver código IBGE, pare e proponha a Pedro um join espacial (centroide × malha) antes de rodar |
+| `tipologia` | `tipologia_car2`; nulo vira `'Sem tipologia'` |
+| `porte` | `porte_imovel` |
+| `area_ha` | `area_ha` |
+| `aridez` | `classe` (A–F; nulo vira `'Sem classe'`) |
+| `risco_fund` | `carac_fund` (MUITO_BAIXO … ALTO) |
+| `agri_deg_ha`, `agri_ndeg_ha`, `past_deg_ha`, `past_ndeg_ha`, `mos_deg_ha`, `mos_ndeg_ha`, `vn_deg_ha`, `vn_ndeg_ha` | Colunas `*_degradad*_ha` da tabela de salvaguardas |
+| `area_pot_degradada_ha` | **A definição precisa ser confirmada por Pedro antes da extração.** Proposta: agricultura + pastagem degradadas, como em `sql/analises/histogramas_salvaguardas.sql`. Mantenha os componentes para permitir recalcular |
+| `apto_status`, `apto_desm_2023`, `apto_desm_2008`, `apto_embargo`, `apto_fpnd`, `apto_uc`, `apto_uc_semucus`, `apto_ti_tq`, `apto_areas_degradadas`, `apto_todos`, `apto_todos_semucus` | Booleanos `apto_*` |
 
-1. Salve as colunas e tipos das tabelas do projeto, via `information_schema.columns`, em `extract/00_colunas.sql`. A saída também vai para o catálogo do meu-contexto, como pendência de documentação.
-2. Descubra a coluna de município no CAR. Pode ser `cod_municipio_ibge`, `municipio`, `cod_mun` ou parecida. A consulta U do código institucional usa `uf`.
-3. Se não houver código IBGE do município no CAR:
-   - procure no banco uma tabela de municípios do IBGE (`information_schema.tables` com `ilike '%munic%'`);
-   - **pare e proponha a Pedro** um join espacial do centroide do imóvel com a malha municipal. Não rode join espacial sem aprovação.
-4. Verifique a unicidade: compare `count(*)` com `count(distinct cod_imovel)` na tabela de salvaguardas. Se houver duplicatas, reporte antes de agregar.
+**Conferência obrigatória.** Compare com o Relatório 2. Se não bater, **pare e mostre a diferença** em vez de ajustar a query.
 
-**Extrações agregadas** (só SELECT; grupos por `codmun`, `uf` e `tipologia_car2`; tipologia nula vira `'Sem tipologia'`):
+- **Universo (Tabela 23):** 2.478.646 imóveis; 71.897.270 ha.
+- **Por tipologia (n):** AST 35.825; PCT 1.963; PRONAF 156.277; PRONAF B 653.074; Minifúndio 684.726; Pequeno 913.217; Médio 27.213; Grande 6.351.
+- **Risco fundiário (Tabela 13, n):** muito baixo 84.567; baixo 126.591; moderado-baixo 2.134.088; moderado 113.916; alto 19.484.
+- **Aridez:** classes A + B = 664.532 imóveis.
+- **Unicidade:** `count(*)` deve ser igual a `count(distinct cod_imovel)` na origem. A query de checagem pode ler `cod_imovel`, mas ele não vai para o arquivo.
 
-| Arquivo | Conteúdo |
-| --- | --- |
-| `geo_mun_tipologia.parquet` | `n_car` e `area_ha` totais; somas das áreas de uso degradado e não degradado (agricultura, pastagem, mosaico, VN); para cada critério `apto_*`, número e área dos aptos; `apto_todos` e `apto_todos_semucus` (n e área); **área degradada elegível** = agricultura degradada + pastagem degradada em imóveis `apto_todos`. A mesma métrica também no cenário sem UCUS |
-| `geo_mun_aridez.parquet` | `codmun`, `tipologia`, `classe_aridez`: `n_car` e `area_ha` |
-| `geo_mun_fundiario.parquet` | `codmun`, `tipologia`, `carac_fund`: `n_car` e `area_ha` |
-| `geo_mun_porte.parquet` | `codmun`, `porte_imovel`: `n_car` e `area_ha` |
+**Também em `data/`:**
 
-- **Conferência obrigatória:** o total geral deve bater com o Relatório 2, Tabela 23 (universo analisado): **2.478.646 cadastros e 71.897.270 ha**. As tipologias também devem bater: AST 35.825; PCT 1.963; PRONAF 156.277; PRONAF B 653.074; Minifúndio 684.726; Pequeno 913.217; Médio 27.213; Grande 6.351.
-  - Se não bater, **não ajuste a query para forçar o número**. Reporte a diferença a Pedro.
-- **Granularidade:** fica em município × tipologia. Nada por imóvel sai do banco.
+- `data/geo_mun_resumo.parquet`: agregados por município, versionado, para as visões padrão abrirem rápido.
+- `data/manifest.json`: para cada extração, SQL, data e hora, linhas e totais de conferência.
 
-### 4.3 Integração
+### 4.3 Malha municipal (versionada)
 
-- A chave é `codmun`, texto de 7 dígitos.
-- Mostre na interface:
-  - quantos municípios da base socioeconômica não têm CAR;
-  - quantos municípios com CAR estão fora dos 1.095.
+- **Fonte:** IBGE, malha municipal 2022. Antes de baixar, confira se o curupira já tem a malha (`information_schema.tables`).
+- **Preparo:** recorte para os 1.095 `codmun` da base socioeconômica e simplifique com topologia preservada (mapshaper ou equivalente), com alvo de ≤ 2 MB.
+- **Área:** inclua `area_km2` oficial do IBGE e use-a na normalização por km².
+- **Bioma:** acrescente o limite do bioma Caatinga (IBGE 2019) como contorno.
+- **Diferenças de lista:** registre os municípios do CAR fora dos 1.095 e os municípios da base sem CAR.
 
 ## 5. Abas
 
-Todas as abas têm um filtro global de UF que vale em todas elas. Cada gráfico indica a fonte e o período e tem o botão **“Ver SQL”**, que mostra a query DuckDB e permite copiá-la para o console.
+| Aba | Conteúdo |
+|---|---|
+| **1. IBGE** | Como no protótipo: números do topo, aviso sobre a pecuária estimada, construtor de mapas (variáveis IBGE), composição por agrupamento, concentração (top 15), composição por UF e Censo 2017 por UF |
+| **2. SICOR** | Como no protótipo: números do topo, **quadro reservado para a série temporal** (a base anual do Felipe é pendente), construtor de mapas (variáveis Sicor), crédito × produção por cadeia, linhas por UF e inclusão |
+| **3. Geo** | Filtros de imóvel, números do topo, construtor de mapas (variáveis geo, incluindo o nº de aptos por critério), tabela por tipologia com grupos, área por aridez e por risco fundiário. **Novo:** seletor de cenário de salvaguardas (com UCUS / sem UCUS) |
+| **4. Geo + socioeconomia** | Fluxo da seção 2.1 |
+| **5. Console SQL** | Editor com Ctrl+Enter, resultado paginado, "Copiar CSV", painel com tabelas e colunas (descrições do dicionário) e 5 a 8 exemplos prontos. Tabelas expostas: `socio_municipal`, `socio_dicionario`, `imoveis` e `geo_mun_resumo` |
 
-| Aba | O que mostra |
-| --- | --- |
-| **1. Socioeconômico — IBGE** | KPIs: VBP agropecuário, agrícola, pecuária e % da pecuária apurada pelo IBGE (`pr_pec_medido_pct`). VBP por agrupamento produtivo (barras). Ranking de municípios (top N ajustável). Distribuição de agrícola × pecuária. Perfil do Censo 2017: estabelecimentos, agricultura familiar, Pronaf B, dirigente mulher, preto ou pardo e menor de 25 anos, ATER e até 20 ha (histogramas ou boxplots por UF) |
-| **2. Socioeconômico — SICOR** | KPIs: volume, contratos e ticket médio. Participação de Pronaf, Pronaf B e fora do Pronaf. Custeio × investimento. Participação de mulheres e de povos tradicionais. Crédito por agrupamento. Ranking de municípios. `cx_credito_por_producao` e `cx_indice_vs_bioma`, com aviso de que o período é misto quando se aplica |
-| **3. Territorial (Geo)** | Filtros de UF e tipologia. KPIs: CAR, área, área degradada e área degradada elegível. Uso e degradação por tipologia (barras empilhadas). Aridez por tipologia. Risco fundiário por tipologia. **Funil de salvaguardas**, com n e área aptos em cada critério, `apto_todos` e o cenário sem UCUS. Tabela por município |
-| **4. Integração** | Tabela municipal juntando as métricas-chave dos dois lados, com ordenação e busca. Gráficos de dispersão configuráveis, com eixo X e Y escolhidos entre métricas, cor por UF e tooltip com o nome do município. Exemplos: área degradada elegível × volume de crédito; × VBP pecuário; × % Pronaf B. Aviso de que agrupamentos e períodos não se alinham |
-| **5. Console SQL** | Editor de SQL com Ctrl+Enter. Resultado em tabela paginada com exportação CSV. Painel lateral com tabelas e colunas, usando os descritivos do dicionário. Botões com 5 a 8 queries de exemplo prontas. Mensagens de erro legíveis |
+## 6. Ordem de entrega (prazo: reunião de 25/11)
 
-**Mapa municipal:** é opcional, só se der tempo. Exige o GeoJSON simplificado da malha municipal do IBGE em `data/`, e o tamanho final deve ficar abaixo de 10 MB. Não é prioridade.
+1. Copiar as bibliotecas para `vendor/`. Fazer o esqueleto com DuckDB e o console SQL sobre `socio_*`. Portar as abas 1 e 2 do protótipo para a camada DuckDB.
+2. Malha oficial e área em km².
+3. Etapa 0 de inspeção do banco (colunas, coluna de município, unicidade), com SQL aprovada.
+4. Extração de imóveis, com SQL aprovada, e conferência de totais.
+5. Abas 3 e 4 com os dados reais.
+6. README e teste do zero (`git clone`, sem `data/local/`), para que o BI abra e avise de forma clara que falta o arquivo de imóveis.
 
-## 6. Ordem de entrega (prazo: reunião em 25/11)
-
-1. Esqueleto: `vendor/`, `run.sh`, carregamento do DuckDB e **console SQL** sobre `socio_*`.
-2. Abas 1 e 2 (não dependem do banco).
-3. Etapa 0 de inspeção do banco, com SQL aprovada por Pedro.
-4. Extrações geo, com SQL aprovada, mais a conferência de totais.
-5. Abas 3 e 4.
-6. README para colegas e um teste final do zero: `git clone`, depois `./run.sh`, sem internet.
+Se o tempo apertar, **corte nesta ordem**: mapa do bioma, Jenks, cenário UCUS, console SQL avançado. Nunca corte a conferência de totais.
 
 ## 7. Critérios de aceite
 
-- Abre com `./run.sh` numa máquina sem internet e sem credenciais.
-- Todas as abas carregam em poucos segundos, e o console roda SQL arbitrário.
-- Os totais geo batem com o Relatório 2, ou há uma nota explícita sobre a diferença.
-- `scripts/checar_dados.py` passa: nada de `cod_imovel`, `geom` ou linha por imóvel em `data/`.
-- O README explica, em 5 passos, como um colega clona e abre.
+- Abre com `./run.sh` sem internet e sem credenciais.
+- A interface reproduz o protótipo aprovado (seção 2.1).
+- Uma mudança de filtro atualiza o mapa em menos de 2 segundos com os 2,5 milhões de imóveis.
+- Os totais batem com o Relatório 2, ou há uma nota explícita sobre a diferença.
+- `python3 scripts/checar_dados.py` passa e `data/local/` não entra no git.
+
+## 8. Pendências que não dependem do código
+
+- Definição de "área potencialmente degradada" para o BI (seção 4.2).
+- Com o Felipe:
+  - os valores são soma ou média de 2019–2024?
+  - o que significa "AEH"?
+  - pedir a base anual para a série temporal.
+- Distribuição de `data/local/imoveis.parquet` aos colegas, por exemplo pelo Drive. Hoje o BI completo roda só na máquina de Pedro.

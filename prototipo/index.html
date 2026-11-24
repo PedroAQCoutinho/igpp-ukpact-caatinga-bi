@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Protótipo BI Caatinga</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: graphics desk, sober, legible on a projector
+   IDEA: a field survey notebook of the semiarid — each section answers one question
+   PICTURE: the municipal map builder is the centre of every tab
+   COLOUR and TYPE: white ground, caatinga grey-green ink, ochre accent; Source Sans 3
+   LAYOUT: sticky bar with tabs and UF, controls left of the map, legend and table under it */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#121513);--ink:light-dark(#1d2420,#e6ebe7);--mut:light-dark(#5d6b62,#9aa79f);--line:light-dark(#e3e7e4,#2a312d);--soft:light-dark(#f3f5f2,#1a1f1c);--main:light-dark(#4f6b55,#86a98d);--acc:light-dark(#c4761a,#e39a3f);--out:light-dark(#e6e8e7,#262c29);--nd:light-dark(#c9cecb,#454d48);--zero:light-dark(#ffffff,#121513)}
+:root{--blank:light-dark(#fbfcfb,#1c211e)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Source Sans 3",system-ui,sans-serif;overflow-x:clip}
+header{padding:24px max(4vw,16px) 6px}
+h1{font-size:clamp(28px,4vw,38px);line-height:1.05;margin:0 0 6px;text-wrap:balance}
+.note{color:var(--mut);font-size:14px;max-width:90ch;margin:0}
+.bar{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:8px max(4vw,16px)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+button,select,input{font:inherit;font-size:16px;color:var(--ink)}
+.tabs button,.btn{min-height:44px;padding:0 14px;border:1px solid var(--line);background:var(--soft);border-radius:6px;cursor:pointer}
+.tabs button[aria-selected=true]{background:var(--main);color:#fff;border-color:var(--main)}
+select,input[type=number],input[type=text]{min-height:40px;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:0 8px}
+input[type=number]{width:110px}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+main{padding:0 max(4vw,16px) 48px;max-width:1400px}
+section{padding:22px 0;border-bottom:1px solid var(--line)}
+h2{font-size:24px;line-height:1.15;margin:0 0 4px;text-wrap:balance}
+h3{font-size:17px;margin:14px 0 6px}
+.q{color:var(--mut);font-size:14px;margin:0 0 12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;padding:16px 0}
+.kpi{background:var(--soft);border-radius:8px;padding:10px 12px}
+.kpi b{display:block;font-size:clamp(22px,2.6vw,30px);line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi span{font-size:14px;color:var(--mut)}
+.rows{display:grid;gap:6px}
+.row{display:grid;grid-template-columns:minmax(110px,200px) minmax(0,1fr) 96px;gap:10px;align-items:center;font-size:15px}
+.row .v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.track{height:18px;background:var(--soft);border-radius:3px;display:flex;overflow:hidden}
+.track i{display:block;height:100%}
+.pair .track{height:9px}.pair .track+.track{margin-top:3px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;color:var(--mut);margin:8px 0}
+.legend span::before{content:"";display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;background:var(--c);vertical-align:-1px}
+.warn{border-left:3px solid var(--acc);padding:6px 12px;font-size:14px;background:var(--soft);margin:10px 0;max-width:95ch}
+.sim{background:var(--acc);color:#fff;font-weight:700;padding:2px 8px;border-radius:4px;font-size:13px}
+.mb{display:grid;grid-template-columns:minmax(260px,330px) minmax(0,1fr);gap:20px;align-items:start}
+.ctl{display:grid;gap:10px;font-size:15px}
+.ctl label{display:grid;gap:3px;color:var(--mut);font-size:14px}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:0;display:grid;gap:8px}
+fieldset legend{font-size:14px;font-weight:600;color:var(--ink);padding:0 4px}
+.fr{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.fr select{max-width:100%}
+.u{font-size:13px;color:var(--mut)}
+.x{min-height:36px;min-width:36px;border:1px solid var(--line);background:var(--soft);border-radius:6px;cursor:pointer}
+.chk{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:15px}
+.chk label{display:flex;gap:4px;align-items:center;color:var(--ink)}
+.map{position:relative;min-height:460px;background:var(--soft);border-radius:8px;overflow:hidden}
+.map svg{position:absolute;inset:0;width:100%;height:100%}
+.map path.m{stroke:var(--bg);stroke-width:.35}
+.map svg.blank path.m{stroke:var(--mut);stroke-width:.3}
+.map path.m:hover{stroke:var(--ink);stroke-width:1.2}
+.maps2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.leg{display:grid;gap:3px;font-size:14px;margin-top:8px}
+.leg div{display:flex;gap:8px;align-items:center;font-variant-numeric:tabular-nums}
+.leg i{width:22px;height:13px;border-radius:2px;flex:none;border:1px solid var(--line)}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:13px;padding:4px 8px;border-radius:4px;white-space:nowrap;z-index:5}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}th{font-weight:600;color:var(--mut)}
+tr.sel td{background:var(--soft);font-weight:600}
+.scroll{overflow-x:auto}.tall{max-height:320px;overflow:auto}
+pre{background:var(--soft);padding:10px;border-radius:6px;font-size:13px;overflow:auto;max-height:240px}
+.ask{margin:6px 0 0;font-size:14px;color:var(--acc)}
+.ph{border:2px dashed var(--line);border-radius:8px;padding:24px;color:var(--mut)}
+.step{display:inline-block;background:var(--main);color:#fff;border-radius:50%;width:26px;height:26px;text-align:center;line-height:26px;font-weight:700;margin-right:6px;font-size:16px}
+/* passos do construtor: cor 1 recorte, 2 variável, 3 legenda, 4 hachura */
+.box{--bc:#4f6b55;border:1px solid var(--line);border-left:5px solid var(--bc);border-radius:8px;padding:10px 12px;display:grid;gap:8px;background:color-mix(in srgb,var(--bc) 6%,var(--bg))}
+.b1{--bc:#4f6b55}.b2{--bc:#c4761a}.b3{--bc:#3d6e8f}.b4{--bc:#7a5a8c}
+.box.off{opacity:.55}
+.bh{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--ink);font-size:16px}
+.bh .n{background:var(--bc);color:#fff;border-radius:50%;width:24px;height:24px;display:inline-grid;place-items:center;font-size:14px;flex:none}
+.bh .clr{margin-left:auto}
+.clr{min-height:34px;padding:0 10px;border:1px solid var(--bc);color:var(--bc);background:var(--bg);border-radius:6px;cursor:pointer;font-size:14px;font-weight:600}
+.clr:hover{background:var(--bc);color:#fff}
+.hint{font-size:14px;color:var(--mut);margin:0}
+.btn.add{border-style:dashed;border-color:var(--bc);color:var(--bc);background:var(--bg);font-weight:600}
+.grp{--bc:#4f6b55;border:1px solid var(--line);border-left:5px solid var(--bc);border-radius:8px;padding:6px 10px;display:grid;gap:4px}
+.g-af{--bc:#4f6b55}.g-hib{--bc:#c4761a}.g-eco{--bc:#3d6e8f}
+.g-up{--bc:#b5543a}.g-eq{--bc:#8a8f8c}.g-dn{--bc:#3d6e8f}
+.grp>label{font-weight:700;display:flex;gap:6px;align-items:center}
+.grp .chk{padding-left:22px}
+.chk small{color:var(--mut);font-size:13px}
+.quick{display:flex;flex-wrap:wrap;gap:6px}
+.quick button{min-height:34px;padding:0 10px;border:1px solid var(--line);background:var(--soft);border-radius:6px;cursor:pointer;font-size:14px}
+tr.gt td{font-weight:600}
+tr.gt td:first-child{border-left:5px solid var(--bc)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--bc);margin-right:6px}
+[hidden]{display:none!important}
+@media(max-width:860px){.mb{grid-template-columns:1fr}}
+@media(max-width:600px){.row{grid-template-columns:100px minmax(0,1fr) 78px;font-size:14px}.map{min-height:360px}}
+</style>
+</head>
+<body>
+<header>
+<h1>Protótipo do BI — Caatinga</h1>
+<p class="note">Abas 1 e 2: base municipal de Felipe Gandra (19/11/2026), crédito e produção de 2019–2024 em R$ de 2025 e Censo Agro de 2017. Abas 3 e 4: <span class="sim">DADOS SIMULADOS</span>, só para testar a interação; os números não são do curupira. Malha municipal provisória e simplificada.</p>
+</header>
+<div class="bar">
+<div class="tabs" role="tablist">
+<button role="tab" data-p="ibge" aria-selected="true">1 · IBGE</button>
+<button role="tab" data-p="sicor" aria-selected="false">2 · SICOR</button>
+<button role="tab" data-p="geo" aria-selected="false">3 · Geo</button>
+<button role="tab" data-p="int" aria-selected="false">4 · Geo + socioeconomia</button>
+</div>
+<label>UF <select id="uf"></select></label>
+</div>
+<main>
+<div id="p-ibge" class="pane">
+<div class="fr" style="padding-top:14px"><label>Agrupamento produtivo <select id="ag-ibge"></select></label></div>
+<div class="kpis" id="k-ibge"></div>
+<div class="warn">Os valores parecem ser a <b>soma de 2019–2024</b> (falta confirmar com o Felipe). Só <b id="pecmed"></b> do valor pecuário foi apurado pelo IBGE; o restante foi estimado com FAOSTAT e CONAB.</div>
+<section><h2>Construtor de mapas — produção</h2><p class="q">Escolha a variável, a normalização, a legenda e a paleta; filtre os municípios e marque uma característica com hachura.</p><div id="mb-ibge"></div></section>
+<section><h2 id="h-comp"></h2><p class="q">Valor da produção por agrupamento produtivo.</p><div class="rows" id="comp"></div><p class="ask">Para o Felipe: o que significa "AEH"?</p></section>
+<section><h2 id="h-conc"></h2><p class="q">Os 15 maiores municípios no agrupamento selecionado.</p><div class="rows" id="conc"></div></section>
+<section><h2>Composição produtiva por UF</h2><div class="legend" id="leg-uf"></div><div class="rows" id="ufmix"></div></section>
+<section><h2>Quem produz (Censo 2017)</h2><p class="q">Médias ponderadas pelo número de estabelecimentos. Esses dados não variam por agrupamento.</p><div class="scroll"><table id="censo"></table></div></section>
+</div>
+
+<div id="p-sicor" class="pane" hidden>
+<div class="fr" style="padding-top:14px"><label>Agrupamento produtivo <select id="ag-sicor"></select></label></div>
+<div class="kpis" id="k-sicor"></div>
+<section><h2>Dinâmica temporal do crédito</h2><div class="ph">Este quadro depende da base anual (município × ano × agrupamento × linha × finalidade) que vamos pedir ao Felipe. A base atual tem só o total de 2019–2024. Com ela: linhas anuais por cadeia ou linha de crédito, um mapa da variação 2019→2024 e um seletor de ano no mapa.</div></section>
+<section><h2>Construtor de mapas — crédito</h2><p class="q">Mesmo componente da aba 1, com as variáveis do Sicor.</p><div id="mb-sicor"></div></section>
+<section><h2 id="h-cad"></h2><p class="q">Participação de cada agrupamento no crédito e no valor da produção (2019–2024).</p><div class="legend"><span style="--c:var(--acc)">% do crédito</span><span style="--c:var(--main)">% da produção</span></div><div class="rows" id="cad"></div><div class="warn">Os agrupamentos não coincidem: <i>base forrageira</i> só existe no crédito e <i>não classificado</i> só na produção.</div></section>
+<section><h2>Linhas de crédito por UF</h2><p class="q">Não variam por agrupamento.</p><div class="legend"><span style="--c:var(--acc)">Pronaf B</span><span style="--c:var(--main)">Demais Pronaf</span><span style="--c:#9aa79f">Fora do Pronaf</span></div><div class="rows" id="linhas"></div><div class="warn">As três linhas somam <b id="cob"></b> do volume total.</div></section>
+<section><h2 id="h-incl"></h2><p class="q">Operações de pessoa física com sexo identificado. Não variam por agrupamento.</p><div class="kpis" id="k-incl"></div></section>
+</div>
+
+<div id="p-geo" class="pane" hidden>
+<p class="warn"><span class="sim">DADOS SIMULADOS</span> Amostra fictícia de ~60 mil imóveis, com peso para reproduzir as contagens por tipologia do Relatório 2. O BI final usa a extração do curupira, uma linha por imóvel e sem <code>cod_imovel</code>.</p>
+<section><h2>Filtros de imóvel</h2><p class="q">Definem quais imóveis entram nas contas desta aba.</p><div id="if-geo"></div></section>
+<div class="kpis" id="k-geo"></div>
+<section><h2>Construtor de mapas — território</h2><div id="mb-geo"></div></section>
+<section><h2>Seleção por tipologia</h2><div class="scroll"><table id="tip-geo"></table></div></section>
+<section><h2>Aridez e risco fundiário</h2><div class="maps2"><div><h3>Área por classe de aridez</h3><div class="rows" id="ar-geo"></div></div><div><h3>Área por risco fundiário</h3><div class="rows" id="rf-geo"></div></div></div></section>
+</div>
+
+<div id="p-int" class="pane" hidden>
+<p class="warn"><span class="sim">PARTE GEO SIMULADA</span> As variáveis socioeconômicas são reais.</p>
+<section><h2><span class="step">1</span>Universo de municípios</h2><p class="q">Só os municípios que passam em todos os filtros aparecem nos mapas. Variáveis geo usadas aqui contam todos os imóveis do município.</p><div id="fl-int"></div></section>
+<section><h2><span class="step">2</span>Filtros de imóvel</h2><p class="q">Definem quais imóveis são contados nos dois mapas e na tabela.</p><div id="if-int"></div></section>
+<section><h2><span class="step">3</span>Mapas</h2><div id="ctl-int"></div><p class="q" id="sum-int"></p>
+<div class="maps2"><div><h3>Número de imóveis</h3><div class="map" id="m1"></div><div class="leg" id="l1"></div></div><div><h3>Área potencialmente degradada (ha)</h3><div class="map" id="m2"></div><div class="leg" id="l2"></div></div></div></section>
+<section><h2><span class="step">4</span>Área potencialmente degradada por tipologia na seleção</h2><div class="scroll"><table id="tip-int"></table></div><div class="fr" style="margin-top:10px"><button class="btn" id="cp-int">Copiar visão (JSON)</button></div><pre id="vj-int" hidden></pre></section>
+</div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
