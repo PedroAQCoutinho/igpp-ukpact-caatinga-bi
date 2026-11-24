@@ -1,0 +1,9 @@
+# Trecho a incluir DENTRO do bloco {$BI_HOST} de deploy/caddy-bi.caddy, antes do file_server.
+# Fica atrás do mesmo basic_auth do BI. O host do receptor depende de como o container do Caddy
+# alcança o host da VM (ex.: extra_hosts "host.docker.internal:host-gateway" no compose).
+handle /api/feedback* {
+	request_body {
+		max_size 22MB
+	}
+	reverse_proxy host.docker.internal:8090
+}

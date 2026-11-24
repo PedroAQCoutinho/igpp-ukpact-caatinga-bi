@@ -1,0 +1,23 @@
+# systemd: instalar em /etc/systemd/system/bi-feedback.service na VM Oracle
+# Ajuste BIND para o IP do gateway da rede Docker do Caddy (o Caddy roda em container),
+# de modo que só o Caddy alcance a porta. A porta 8090 NÃO deve ser aberta na Security List da OCI.
+[Unit]
+Description=Receptor de feedback do BI Caatinga
+After=network-online.target docker.service
+
+[Service]
+User=opc
+Environment=FEEDBACK_DIR=/home/opc/feedback/bi-caatinga
+Environment=BIND=127.0.0.1
+Environment=PORT=8090
+ExecStart=/usr/bin/python3 /home/opc/bi-feedback/receptor.py
+Restart=on-failure
+RestartSec=5
+MemoryMax=40M
+CPUQuota=20%
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

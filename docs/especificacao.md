@@ -224,7 +224,7 @@ Se o tempo apertar, **corte nesta ordem**: mapa do bioma, Jenks, console SQL ava
   - a VM segue com memória folgada (`free -h` antes e depois).
 - **Registro:** atualize `meu-contexto/infra/vm-oracle.md` (site, caminhos, como atualizar), `infra/credenciais.md` e `infra/diario.md`.
 
-## 10. Feedback dos usuários (próxima fase, depois de a VM estabilizar)
+## 10. Feedback dos usuários (aprovado por Pedro para implementar em 24/11/2026)
 
 **Ideia de Pedro (24/11/2026):** coletar o feedback dentro do próprio BI, transformar em issues no GitHub e tratar com aprovação dele. A interface está no `prototipo/`, botão "Feedback" no canto inferior direito.
 
@@ -244,14 +244,20 @@ Se o tempo apertar, **corte nesta ordem**: mapa do bioma, Jenks, console SQL ava
 
 ### 10.2 Receptor na VM
 
-- **Serviço:** mínimo (≤ 30 MB de RAM), atrás do mesmo Caddy e da mesma senha do BI, em `POST /api/feedback`.
+- **Já escrito (Claude, 24/11):**
+  - `deploy/feedback/receptor.py`: só biblioteca padrão do Python, testado localmente;
+  - `deploy/feedback/bi-feedback.service`: systemd com `MemoryMax=40M`;
+  - `deploy/feedback/caddy-trecho.caddy`: o `handle /api/feedback*` vai dentro do bloco do BI, atrás da mesma senha.
+- **Formato do envio:** JSON com `categoria`, `nome`, `texto`, `contexto` (aba, uf, visao), `imagem_b64`/`imagem_tipo` e `audio_b64`/`audio_tipo`.
+- **`GET /api/feedback/saude`:** o BI só mostra o botão se essa rota responder. Assim, no `run.sh` local, o botão some.
+- **Rede:** o receptor escuta só onde o container do Caddy alcança (variável `BIND`). A porta 8090 nunca é aberta na OCI.
 - **Gravação:** cada envio vai para `~/feedback/bi-caatinga/<data>-<id>/`: `feedback.json`, `captura.png` e `audio.webm`.
 - **Limites:** imagem ≤ 5 MB, áudio ≤ 10 MB, até 10 envios por minuto.
 - **Proibido:** token do GitHub no navegador. Se um dia o receptor criar issues direto, o token fica só na VM, com escopo restrito às issues deste repositório.
 
 ### 10.3 Conversão em issues (Claude Code local)
 
-- **Script `scripts/feedback_para_issues.py`:**
+- **Script `scripts/feedback_para_issues.py`** (já escrito e testado com `--simular`; precisa de `gh` autenticado e, para áudio, `openai-whisper` ou `faster-whisper`):
   - copia da VM os feedbacks novos;
   - transcreve o áudio com Whisper na máquina de Pedro;
   - descreve a captura;
