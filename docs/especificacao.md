@@ -52,6 +52,7 @@ O BI é uma página local para:
   - *dica de hover* com município, UF e valor.
 - **Agrupamento produtivo:** fica num seletor no topo das abas 1 e 2 e vale para os números do topo, rankings, destaques e mapa. Os quadros que não variam por agrupamento (Censo, linhas de crédito, mulheres) dizem isso.
 - **Filtros de imóvel** (abas 3 e 4):
+  - **primeiro, em card próprio:** "Salvaguardas e elegibilidade (Eco Invest)", com **três botões** (Elegíveis | Não elegíveis | Todos), padrão Todos. Elegível = `apto_todos`. Não usar dropdown nem misturar com a área degradada (Pedro, 24/11, 20h);
   - **tipologia** em três grupos coloridos, cada um selecionável inteiro (marca todas as tipologias do grupo) ou por tipologia: agricultura familiar (AST, PCT, PRONAF, PRONAF B), grupo híbrido (Minifúndio, Pequeno) e potencial Eco Invest (Médio, Grande);
   - **dinâmica da aridez** agrupada:
     - Aumentou: A, já em ASD; B, entrou na ASD.
@@ -61,7 +62,6 @@ O BI é uma página local para:
   - **risco fundiário** com a regra entre parênteses, como no protótipo (fonte: Relatório 2, seção 2.2.3.2);
   - **uso da terra** (agricultura, pastagem, mosaico de usos, vegetação nativa): o usuário escolhe quais usos compõem a "área potencialmente degradada". O **padrão é agricultura + pastagem** (definição de Pedro, 24/11/2026). Essa soma alimenta o filtro de área mínima, as variáveis, os mapas da aba 4 e as tabelas;
   - área potencialmente degradada mínima (ha);
-  - salvaguardas: todos, só aptos ou só não aptos;
   - botão "Limpar filtros de imóvel".
 
 **Aba 4, Geo + socioeconomia (layout revisto por Pedro em 24/11, 17h50):**
@@ -141,7 +141,7 @@ O BI é uma página local para:
 |---|---|
 | **1. IBGE** | Como no protótipo: números do topo, aviso sobre a pecuária estimada, construtor de mapas (variáveis IBGE), composição por agrupamento, concentração (top 15), composição por UF e Censo 2017 por UF |
 | **2. SICOR** | Como no protótipo: números do topo, **quadro reservado para a série temporal** (a base anual do Felipe é pendente), construtor de mapas (variáveis Sicor), crédito × produção por cadeia, linhas por UF e inclusão |
-| **3. Geo** | Filtros de imóvel (inclusive uso da terra), números do topo. **Quadro de uso da terra:** área por uso com a parcela degradada e não degradada, e a composição de uso por grupo de tipologia. Construtor de mapas com as variáveis geo: área, degradada e % degradada **por uso**, e o nº de aptos por critério. Tabela por tipologia com grupos e colunas de área degradada por uso. Área por aridez e por risco fundiário. **Novo:** seletor de cenário de salvaguardas (com UCUS / sem UCUS) |
+| **3. Geo** | Filtros de imóvel (inclusive uso da terra), números do topo. **Quadro de uso da terra:** área por uso com a parcela degradada e não degradada, e a composição de uso por grupo de tipologia. Construtor de mapas com as variáveis geo: área, degradada e % degradada **por uso**, e o nº de aptos por critério. Tabela por tipologia com grupos e colunas de área degradada por uso. Área por aridez e por risco fundiário. O cenário de salvaguardas com/sem UCUS **foi removido** por decisão de Pedro (24/11) |
 | **4. Geo + socioeconomia** | Fluxo da seção 2.1 |
 | **5. Console SQL** | Editor com Ctrl+Enter, resultado paginado, "Copiar CSV", painel com tabelas e colunas (descrições do dicionário) e 5 a 8 exemplos prontos. Tabelas expostas: `socio_municipal`, `socio_dicionario`, `imoveis` e `geo_mun_resumo` |
 

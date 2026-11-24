@@ -53,8 +53,8 @@ const V={
  ar_im:{l:'Área dos imóveis',u:'ha',g:'Geo',ext:1,geo:1,f:(r,a,g)=>g?.area??null},
  deg:{l:'Área potencialmente degradada (usos escolhidos)',u:'ha',g:'Geo',ext:1,geo:1,f:(r,a,g)=>g?.deg??null},
  degp:{l:'Área degradada / área dos imóveis',u:'%',g:'Geo',geo:1,f:(r,a,g)=>g?rat(g.deg,g.area):null},
- eleg:{l:'Área degradada em imóveis aptos',u:'ha',g:'Geo',ext:1,geo:1,f:(r,a,g)=>g?.elig??null},
- aptp:{l:'Imóveis aptos (todas as salvaguardas)',u:'%',g:'Geo',geo:1,f:(r,a,g)=>g?rat(g.apt,g.n):null},
+ eleg:{l:'Área degradada em imóveis elegíveis',u:'ha',g:'Geo',ext:1,geo:1,f:(r,a,g)=>g?.elig??null},
+ aptp:{l:'Imóveis elegíveis (todas as salvaguardas)',u:'%',g:'Geo',geo:1,f:(r,a,g)=>g?rat(g.apt,g.n):null},
  ...Object.fromEntries([['ag','Agricultura',0],['pa','Pastagem',1],['mo','Mosaico de usos',2],['vn','Vegetação nativa',3]].flatMap(([k,l,i])=>[
   ['u_'+k,{l:'Área de '+l.toLowerCase(),u:'ha',g:'Geo',ext:1,geo:1,f:(r,a,g)=>g?g.u[i]:null}],
   ['f_'+k,{l:l+' potencialmente degradada',u:'ha',g:'Geo',ext:1,geo:1,f:(r,a,g)=>g?g.f[i]:null}],
@@ -90,24 +90,26 @@ const ARL=['A · aumentou, já em ASD','B · aumentou, entrou na ASD','C · est�
 const RFL=[['Muito baixo','par com SIGEF, AST ou PCT'],['Baixo','>70% em imóvel privado; pequeno/minifúndio em assentamento ou gleba pública'],['Moderado-baixo','>70% em área sem registro georreferenciado'],['Moderado','demais casos'],['Alto','sobreposição com TI, UCPI, TQ ou floresta pública tipo B']];
 function ImovelFilters(el,onChange){
  const grp=(cls,gk,label,items,name)=>`<div class="grp g-${cls}"><label><input type="checkbox" data-grp="${gk}" checked> ${label}</label><div class="chk">${items.map(([i,l,sm])=>`<label><input type="checkbox" data-g="${name}" data-gr="${gk}" value="${i}" checked> ${esc(l)}${sm?` <small>${esc(sm)}</small>`:''}</label>`).join('')}</div></div>`;
- el.innerHTML=`<div class="maps2">
+ el.innerHTML=`<fieldset class="sg"><legend>Salvaguardas e elegibilidade (Eco Invest)</legend><div class="seg" role="group" aria-label="Salvaguardas e elegibilidade">${[['s','Elegíveis'],['n','Não elegíveis'],['t','Todos']].map(([k,l])=>`<button type="button" data-apt="${k}" aria-pressed="${k==='t'}">${l}</button>`).join('')}</div><p class="hint">Elegível = apto em todos os critérios de salvaguarda (status do CAR, desmatamento, embargos, florestas públicas, UC, TI/TQ).</p></fieldset>
+ <div class="maps2">
  <fieldset><legend>Tipologia</legend>${TIPG.map(([k,l,ix])=>grp(k,'t-'+k,l,ix.map(i=>[i,IM.tip[i]]),'tip')).join('')}</fieldset>
  <fieldset><legend>Dinâmica da aridez (ASD = área suscetível à desertificação)</legend>${ARG.map(([k,l,it])=>grp(k,'a-'+k,l,it.map(([i,c,d])=>[i,c,d]),'ar')).join('')}
  <div class="quick"><button data-q="asd">Só em ASD hoje (A, B, C, E)</button><button data-q="noasd">Só fora de ASD (D, F)</button><button data-q="all">Todas</button></div></fieldset>
  <fieldset><legend>Risco fundiário</legend><div class="chk" style="display:grid;gap:4px">${RFL.map(([l,d],i)=>`<label><input type="checkbox" data-g="rf" value="${i}" checked> ${l} <small>(${esc(d)})</small></label>`).join('')}</div></fieldset>
  <fieldset><legend>Uso da terra: o que entra na área potencialmente degradada</legend><div class="chk">${USOS.map(([k,l,col],i)=>`<label><input type="checkbox" data-g="uso" value="${i}"${DEF_USO.has(i)?' checked':''}> <span class="dot" style="--bc:${col}"></span>${l}</label>`).join('')}</div><p class="hint">Proposta inicial: agricultura + pastagem. Os quadros de uso abaixo mostram os quatro usos de qualquer forma.</p></fieldset>
- <fieldset><legend>Degradação e salvaguardas</legend>
+ <fieldset><legend>Área potencialmente degradada</legend>
  <div class="fr">Área potencialmente degradada ≥ <input type="number" data-k="degmin" min="0" placeholder="ha"><span class="u">ha</span></div>
- <label class="fr">Salvaguardas <select data-k="apt">${opt('t','Todos os imóveis')}${opt('s','Só aptos em todas')}${opt('n','Só não aptos')}</select></label>
  <div><button class="clr" data-reset style="--bc:#4f6b55">Limpar filtros de imóvel</button></div></fieldset></div>`;
+ let apt='t';const setApt=v=>{apt=v;el.querySelectorAll('[data-apt]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.apt===v))};
  const sync=()=>el.querySelectorAll('[data-grp]').forEach(g=>{const ch=[...el.querySelectorAll(`[data-gr="${g.dataset.grp}"]`)],n=ch.filter(x=>x.checked).length;g.checked=n===ch.length;g.indeterminate=n>0&&n<ch.length});
  el.addEventListener('change',e=>{const g=e.target.dataset.grp;if(g)el.querySelectorAll(`[data-gr="${g}"]`).forEach(x=>x.checked=e.target.checked);sync();onChange()});
  el.addEventListener('input',e=>{if(e.target.type==='number')onChange()});
  el.addEventListener('click',e=>{const q=e.target.dataset.q;if(q){el.querySelectorAll('[data-g=ar]').forEach(x=>x.checked=q==='all'||(q==='asd')===[0,1,2,4].includes(+x.value));sync();onChange()}
-  if(e.target.dataset.reset!=null){el.querySelectorAll('input[type=checkbox]').forEach(x=>x.checked=x.dataset.g==='uso'?DEF_USO.has(+x.value):true);el.querySelector('[data-k=degmin]').value='';el.querySelector('[data-k=apt]').value='t';sync();onChange()}});
+  if(e.target.dataset.reset!=null){el.querySelectorAll('input[type=checkbox]').forEach(x=>x.checked=x.dataset.g==='uso'?DEF_USO.has(+x.value):true);el.querySelector('[data-k=degmin]').value='';setApt('t');sync();onChange()}
+  const a=e.target.dataset.apt;if(a){setApt(a);onChange()}});
  return{get(){const g=n=>new Set([...el.querySelectorAll(`[data-g=${n}]:checked`)].map(x=>+x.value));const v=el.querySelector('[data-k=degmin]').value;
-  return{tip:g('tip'),ar:g('ar'),rf:g('rf'),uso:g('uso'),degmin:v===''?null:+v,apt:el.querySelector('[data-k=apt]').value}},
- json(){const f=this.get();return{tipologias:[...f.tip].map(i=>IM.tip[i]),aridez:[...f.ar].map(i=>IM.ar[i]),risco_fundiario:[...f.rf].map(i=>RFL[i][0]),usos_area_degradada:[...f.uso].map(i=>USOS[i][1]),area_degradada_min_ha:f.degmin,salvaguardas:f.apt}}};
+  return{tip:g('tip'),ar:g('ar'),rf:g('rf'),uso:g('uso'),degmin:v===''?null:+v,apt}},
+ json(){const f=this.get();return{tipologias:[...f.tip].map(i=>IM.tip[i]),aridez:[...f.ar].map(i=>IM.ar[i]),risco_fundiario:[...f.rf].map(i=>RFL[i][0]),usos_area_degradada:[...f.uso].map(i=>USOS[i][1]),area_degradada_min_ha:f.degmin,salvaguardas:{s:'elegiveis',n:'nao_elegiveis',t:'todos'}[f.apt]}}};
 }
 
 // ---------- filtros municipais ----------
@@ -283,7 +285,7 @@ let geoF,geoAgg;
 function geo(){
  const fi=geoF.get();geoAgg=aggImoveis(fi,null);const st=aggImoveis(fi,new Set(universe()));let n=0,a=0,d=0,e=0;
  for(const o of st.by.values()){n+=o.n;a+=o.area;d+=o.deg;e+=o.elig}
- $('k-geo').innerHTML=kpi(nf0.format(n),'Imóveis na seleção')+kpi(nf0.format(a)+' ha','Área dos imóveis')+kpi(nf0.format(d)+' ha','Área potencialmente degradada')+kpi(nf0.format(e)+' ha','Degradada em imóveis aptos');
+ $('k-geo').innerHTML=kpi(nf0.format(n),'Imóveis na seleção')+kpi(nf0.format(a)+' ha','Área dos imóveis')+kpi(nf0.format(d)+' ha','Área potencialmente degradada')+kpi(nf0.format(e)+' ha','Degradada em imóveis elegíveis');
  tipTable($('tip-geo'),st.tip,st.uso);usoBlock(st);
  const ar=st.ar,am=Math.max(...ar,1),AC=['#b5543a','#b5543a','#8a8f8c','#8a8f8c','#3d6e8f','#3d6e8f'];$('ar-geo').innerHTML=ARL.map((l,i)=>bar(l,100*ar[i]/am,nf0.format(ar[i])+' ha',AC[i])).join('');
  const rf=st.rf,rm=Math.max(...rf,1);$('rf-geo').innerHTML=RFL.map(([l,d],i)=>bar(`${l} (${d})`,100*rf[i]/rm,nf0.format(rf[i])+' ha')).join('');
@@ -292,7 +294,7 @@ function tipTable(el,t,uso){const add=(a,x)=>({n:a.n+x.n,area:a.area+x.area,deg:
  const us=[...uso].sort();
  const tr=(l,x,c='',st='')=>`<tr${c}${st}><td>${l}</td><td>${nf0.format(x.n)}</td><td>${nf0.format(x.area)}</td><td>${nf0.format(x.deg)}</td>${us.map(u=>`<td>${nf0.format(x.f[u])}</td>`).join('')}<td>${pc(x.deg,T.deg)}</td><td>${pc(x.deg,x.area)}</td><td>${nf0.format(x.elig)}</td></tr>`;
  const CL={af:'#4f6b55',hib:'#c4761a',eco:'#3d6e8f'};
- el.innerHTML=`<thead><tr><th>Tipologia</th><th>Imóveis</th><th>Área (ha)</th><th>Área pot. degradada (ha)</th>${us.map(u=>`<th>…em ${USOS[u][1].toLowerCase()}</th>`).join('')}<th>% do total degradado</th><th>% da área do grupo</th><th>Degradada em aptos (ha)</th></tr></thead><tbody>`+
+ el.innerHTML=`<thead><tr><th>Tipologia</th><th>Imóveis</th><th>Área (ha)</th><th>Área pot. degradada (ha)</th>${us.map(u=>`<th>…em ${USOS[u][1].toLowerCase()}</th>`).join('')}<th>% do total degradado</th><th>% da área do grupo</th><th>Degradada em elegíveis (ha)</th></tr></thead><tbody>`+
   TIPG.map(([k,l,ix])=>tr(`<span class="dot"></span>${l}`,ix.reduce((a,i)=>add(a,t[i]),Z),' class="gt"',` style="--bc:${CL[k]}"`)+ix.map(i=>tr('&nbsp;&nbsp;&nbsp;&nbsp;'+IM.tip[i],t[i])).join('')).join('')+tr('Total',T,' class="sel"')+'</tbody>'}
 function usoBlock(st){ // quadro de uso da terra
  const U=st.tip.reduce((a,x)=>a.map((v,i)=>v+x.u[i]),z4()),F=st.tip.reduce((a,x)=>a.map((v,i)=>v+x.f[i]),z4()),mx=Math.max(...U,1);
@@ -320,7 +322,7 @@ function integ(){
  ch.push(off(ff.tip,8,IM.tip,'Tipologias'),off(ff.ar,6,IM.ar,'Aridez'),off(ff.rf,5,RFL.map(r=>r[0]),'Risco'));
  ch.push(`<span class="chip" style="--bc:#c4761a">Degradada = ${[...ff.uso].sort().map(i=>USOS[i][1].toLowerCase()).join(' + ')||'nenhum uso'}</span>`);
  if(ff.degmin!=null)ch.push(`<span class="chip" style="--bc:#c4761a">Degradada ≥ ${fmt(ff.degmin)} ha</span>`);
- if(ff.apt!=='t')ch.push(`<span class="chip" style="--bc:#c4761a">${ff.apt==='s'?'Só aptos':'Só não aptos'}</span>`);
+ if(ff.apt!=='t')ch.push(`<span class="chip" style="--bc:#c4761a">${ff.apt==='s'?'Só elegíveis':'Só não elegíveis'}</span>`);
  $('chips-int').innerHTML=ch.join('');
  // mapa único com alternância
  const vals=new Map();for(const c of uni){const o=agg.by.get(c);vals.set(c,o?(intSt.mv==='n'?o.n:o.deg):0)}
