@@ -12,7 +12,7 @@ mudança no BI: a implementação só acontece depois da aprovação de Pedro (m
 
 Uso:  python3 scripts/feedback_para_issues.py [--sem-rsync] [--simular]
 Variáveis: VM_SSH (padrão "opc@147.15.67.178"), VM_KEY (padrão ~/oracle/oracle-vm-1.key),
-           VM_DIR (padrão feedback/bi-caatinga), WHISPER_MODELO (padrão "small").
+           VM_DIR (padrão feedback/bi-caatinga), WHISPER_MODELO (padrão "small"), WHISPER_DEVICE (padrão "cpu").
 """
 import argparse
 import json
@@ -50,7 +50,8 @@ def transcrever(audio: Path) -> str:
             from faster_whisper import WhisperModel
         except ImportError:
             return "_(transcrição indisponível: instale openai-whisper ou faster-whisper)_"
-        modelo = WhisperModel(os.environ.get("WHISPER_MODELO", "small"), compute_type="int8")
+        # CPU por padrão: com placa NVIDIA sem as bibliotecas CUDA, o "auto" falha (libcublas)
+        modelo = WhisperModel(os.environ.get("WHISPER_MODELO", "small"), device=os.environ.get("WHISPER_DEVICE", "cpu"), compute_type="int8")
         segs, _ = modelo.transcribe(str(audio), language="pt")
         return " ".join(s.text.strip() for s in segs).strip() or "_(áudio sem fala reconhecida)_"
     modelo = whisper.load_model(os.environ.get("WHISPER_MODELO", "small"))
