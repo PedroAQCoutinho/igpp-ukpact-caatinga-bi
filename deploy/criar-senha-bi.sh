@@ -8,7 +8,7 @@ read -rsp "Senha: " P1; echo
 read -rsp "Repita a senha: " P2; echo
 [ "$P1" = "$P2" ] || { echo "As senhas não conferem."; exit 1; }
 [ ${#P1} -ge 10 ] || { echo "Use pelo menos 10 caracteres."; exit 1; }
-H=$(printf '%s\n' "$P1" | docker exec -i agentes-chat-caddy-1 caddy hash-password)
+H=$(printf '%s\n' "$P1" | docker exec -i caddy-caddy-1 caddy hash-password)
 unset P1 P2
 case "$H" in \$2a\$*) ;; *) echo "Falha ao gerar o hash."; exit 1;; esac
 printf "BI_USER=%s\nBI_HASH='%s'\n" "$U" "$H" > ~/.agentes-segredos/bi-caddy.env

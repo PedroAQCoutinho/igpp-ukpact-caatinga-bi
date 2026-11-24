@@ -1,5 +1,5 @@
-# Bloco do BI Caatinga para o Caddyfile do container `caddy` (override do agentes.chat na VM Oracle).
-# O host vem da variável BI_HOST (environment do serviço caddy no docker-compose.override.yml).
+# Bloco do BI Caatinga, importado pelo Caddyfile do Caddy da VM Oracle (~/caddy/, desde 24/11/2026).
+# O host vem da variável BI_HOST (environment em ~/caddy/docker-compose.yml); aceita vários nomes separados por vírgula.
 # Usuário e hash bcrypt vêm de ~/.agentes-segredos/bi-caddy.env (env_file, 600): BI_USER e BI_HASH.
 {$BI_HOST} {
 	basic_auth {

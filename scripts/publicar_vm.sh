@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Publica o BI na VM Oracle (site estático servido pelo Caddy do agentes.chat, com senha).
 # Uso: scripts/publicar_vm.sh            (envia os arquivos e testa)
-# Para trocar o domínio: mude BI_HOST aqui E no environment do caddy (docker-compose.override.yml na VM).
+# Para trocar o domínio: mude BI_HOST aqui E no environment do caddy (~/caddy/docker-compose.yml na VM).
 # Ver meu-contexto/infra/vm-oracle.md, seção "BI Caatinga".
 set -euo pipefail
 BI_HOST="${BI_HOST:-bi.147-15-67-178.sslip.io}"   # único lugar do host neste lado
@@ -30,11 +30,11 @@ rsync -az --delete --exclude .caddy-bi.caddy -e "$SSH" "$STAGE/" "$VM:$DESTINO/"
 rsync -az -e "$SSH" "$STAGE/.caddy-bi.caddy" "$VM:sites/bi-caatinga-caddy/bi.caddy"
 $SSH "$VM" "chmod -R a+rX ~/$DESTINO ~/sites/bi-caatinga-caddy"
 echo "Arquivos enviados ($(wc -l < "$LISTA") arquivos + .gz). Bloco do Caddy em ~/sites/bi-caatinga-caddy/bi.caddy."
-echo "Se o bloco mudou: ssh na VM e 'docker exec agentes-chat-caddy-1 caddy reload --config /etc/caddy/Caddyfile'."
+echo "Se o bloco mudou: ssh na VM e 'docker exec caddy-caddy-1 caddy reload --config /etc/caddy/Caddyfile'."
 
 # Testes: sem senha deve dar 401
 code=$(curl -s -o /dev/null -w "%{http_code}" -m 30 "https://$BI_HOST/" || true)
 echo "https://$BI_HOST/ sem senha -> $code (esperado 401)"
-for u in https://147-15-67-178.sslip.io https://radar.147-15-67-178.sslip.io; do
+for u in https://radar.147-15-67-178.sslip.io; do
   echo "$u -> $(curl -s -o /dev/null -w "%{http_code}" -m 30 "$u" || true)"
 done
