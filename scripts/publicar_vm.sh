@@ -4,7 +4,7 @@
 # Para trocar o domínio: mude BI_HOST aqui E no environment do caddy (~/caddy/docker-compose.yml na VM).
 # Ver meu-contexto/infra/vm-oracle.md, seção "BI Caatinga".
 set -euo pipefail
-BI_HOST="${BI_HOST:-bi.147-15-67-178.sslip.io}"   # único lugar do host neste lado
+BI_HOST="${BI_HOST:-bi-caatinga.quilici-coutinho.com.br}"   # único lugar do host neste lado
 VM="${VM:-opc@147.15.67.178}"
 CHAVE="${CHAVE:-$HOME/oracle/oracle-vm-1.key}"
 DESTINO="sites/bi-caatinga"                      # ~/sites/bi-caatinga na VM, montado como /srv/bi-caatinga

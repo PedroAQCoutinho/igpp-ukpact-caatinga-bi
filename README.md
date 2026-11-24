@@ -22,7 +22,7 @@ Para ver só o protótipo: `cd prototipo && python3 -m http.server 8001` e abra 
 
 ## Versão publicada (equipe)
 
-https://bi.147-15-67-178.sslip.io (endereço provisório; usuário e senha com Pedro). Para atualizar: `scripts/publicar_vm.sh`. Configuração do servidor em `deploy/` e em `meu-contexto/infra/vm-oracle.md`.
+https://bi-caatinga.quilici-coutinho.com.br (usuário e senha com Pedro; reserva por alguns dias: https://bi.147-15-67-178.sslip.io). Para atualizar: `scripts/publicar_vm.sh`. Configuração do servidor em `deploy/` e em `meu-contexto/infra/vm-oracle.md`.
 
 ## Abas
 
