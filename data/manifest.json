@@ -32,12 +32,12 @@
    "executado_em": "2026-11-24T16:03:53-03:00",
    "duracao_s": null,
    "saida_local": "data/local/imoveis.parquet (fora do git)",
-   "tamanho_mb": 15.3,
+   "tamanho_mb": 16.5,
    "linhas": 2478646,
    "area_ha": 71895906.0,
-   "area_pot_degradada_ha": 11987803.0,
+   "area_pot_degradada_ha": 12680091.0,
    "municipios": 1213,
-   "definicao_area_pot_degradada": "agricultura_degradada_ha + pastagem_degradada_ha, nulos como zero (Pedro, 24/11/2026)",
+   "definicao_area_pot_degradada": "agricultura_degradada_ha + pastagem_degradada_ha + mosaico_degradado_ha, nulos como zero (Pedro, 24/11/2026, 20h; antes: agricultura + pastagem)",
    "resumo_versionado": "data/geo_mun_resumo.parquet",
    "conferencia_relatorio2": {
     "resultado": "bate, com uma diferença aceita",
@@ -213,6 +213,11 @@
     },
     "base_socio_sem_car": null,
     "nota": "o BI desenha só os 1.095 municípios da base socioeconômica; imóveis em municípios fora dela não entram nos mapas nem nas tabelas das abas 3 e 4"
+   },
+   "recalculo_area_pot_degradada": {
+    "feito_em": "2026-11-24T20:26:22-03:00",
+    "como": "sem nova extração: agri_deg_ha + past_deg_ha + mos_deg_ha do próprio arquivo (componentes já arredondados a 0,1 ha), resultado arredondado a 0,1 ha",
+    "nota": "a SQL em extract/01_imoveis.sql foi atualizada para a nova definição e ainda não rodou nessa forma; sha256_sql acima é a da extração de 2026-11-24T16:03:53-03:00"
    }
   }
  }

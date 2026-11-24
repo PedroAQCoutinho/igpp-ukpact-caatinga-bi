@@ -9,14 +9,14 @@ const DESC = {
   imoveis: {
     codmun: 'Código IBGE do município (7 dígitos)', uf: 'UF', tipologia: 'Tipologia (tipologia_car2)', porte: 'Porte do imóvel (porte_imovel)',
     area_ha: 'Área do imóvel no CAR (ha, 0,1)', aridez: 'Classe da dinâmica da aridez A–F', risco_fund: 'Risco fundiário (carac_fund)',
-    area_pot_degradada_ha: 'Área potencialmente degradada (ha) — definição no manifest.json',
+    area_pot_degradada_ha: 'Área potencialmente degradada (ha) = agricultura + pastagem + mosaico degradados, nulos como zero',
     agri_deg_ha: 'Agricultura degradada (ha)', agri_ndeg_ha: 'Agricultura não degradada (ha)', past_deg_ha: 'Pastagem degradada (ha)', past_ndeg_ha: 'Pastagem não degradada (ha)',
     mos_deg_ha: 'Mosaico degradado (ha)', mos_ndeg_ha: 'Mosaico não degradado (ha)', vn_deg_ha: 'Vegetação nativa degradada (ha)', vn_ndeg_ha: 'Vegetação nativa não degradada (ha)',
     apto_status: 'Critério: status e condição do CAR', apto_desm_2023: 'Critério: sem desmatamento após o marco de 2023 (PRODES 2024–2025)', apto_desm_2008: 'Critério: sem desmatamento não autorizado 2008–2025',
     apto_embargo: 'Critério: sem embargo', apto_fpnd: 'Critério: fora de floresta pública não destinada', apto_uc: 'Critério: fora de UC (UCPI e UCUS)', apto_uc_semucus: 'Critério: fora de UCPI',
-    apto_ti_tq: 'Critério: fora de TI e território quilombola', apto_areas_degradadas: 'Critério: possui área degradada', apto_todos: 'Apto em todos (cenário com UCUS)', apto_todos_semucus: 'Apto em todos (cenário sem UCUS)',
+    apto_ti_tq: 'Critério: fora de TI e território quilombola', apto_areas_degradadas: 'Critério: possui área degradada', apto_todos: 'Elegível (Eco Invest): apto em todas as salvaguardas', apto_todos_semucus: 'Apto em todas sem contar UCUS (não usado no BI)',
   },
-  geo_mun_resumo: { codmun: 'Código IBGE do município', n: 'Imóveis', area: 'Área dos imóveis (ha)', deg: 'Área potencialmente degradada (ha)', elig: 'Degradada em aptos, cenário com UCUS (ha)', apt: 'Imóveis aptos, cenário com UCUS' },
+  geo_mun_resumo: { codmun: 'Código IBGE do município', n: 'Imóveis', area: 'Área dos imóveis (ha)', deg: 'Área potencialmente degradada (ha)', elig: 'Degradada em imóveis elegíveis (ha)', apt: 'Imóveis elegíveis' },
 };
 
 const EX = [
@@ -31,14 +31,14 @@ FROM socio_municipal WHERE cr_volume_rs > 0 ORDER BY pct_pronafb DESC LIMIT 20;`
 FROM (SUMMARIZE socio_municipal) ORDER BY pct_sem_dado DESC;`],
   ['Dicionário: colunas de crédito', `SELECT * FROM socio_dicionario WHERE coluna LIKE 'cr_%' ORDER BY coluna;`],
   ['Imóveis e área degradada por tipologia', `SELECT tipologia, count(*) AS imoveis, round(sum(area_ha)) AS area_ha,
-  round(sum(area_pot_degradada_ha)) AS deg_ha, count(*) FILTER (WHERE apto_todos) AS aptos
+  round(sum(area_pot_degradada_ha)) AS deg_ha, count(*) FILTER (WHERE apto_todos) AS elegiveis
 FROM imoveis GROUP BY tipologia ORDER BY imoveis DESC;`],
-  ['Aptos por critério (com e sem UCUS)', `SELECT count(*) AS imoveis,
+  ['Aptos por critério e elegíveis', `SELECT count(*) AS imoveis,
   count(*) FILTER (WHERE apto_status) AS status, count(*) FILTER (WHERE apto_desm_2023) AS desm_2023,
   count(*) FILTER (WHERE apto_desm_2008) AS desm_2008, count(*) FILTER (WHERE apto_embargo) AS embargo,
   count(*) FILTER (WHERE apto_fpnd) AS fpnd, count(*) FILTER (WHERE apto_uc) AS uc, count(*) FILTER (WHERE apto_ti_tq) AS ti_tq,
   count(*) FILTER (WHERE apto_areas_degradadas) AS areas_deg,
-  count(*) FILTER (WHERE apto_todos) AS todos, count(*) FILTER (WHERE apto_todos_semucus) AS todos_semucus
+  count(*) FILTER (WHERE apto_todos) AS elegiveis
 FROM imoveis;`],
   ['Cruzamento: área degradada × caprinocultura', `SELECT s.codmun, s.municipio, s.uf,
   round(s.pr_ag_caprinos_e_ovinos_rs/1e6, 1) AS vbp_caprinos_rs_mi,

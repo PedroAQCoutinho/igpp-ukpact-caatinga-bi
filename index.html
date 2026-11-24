@@ -60,7 +60,7 @@ fieldset legend{font-size:14px;font-weight:600;color:var(--ink);padding:0 4px}
 .chk label{display:flex;gap:4px;align-items:center;color:var(--ink)}
 .map{position:relative;min-height:460px;background:var(--soft);border-radius:8px;overflow:hidden}
 .map svg{position:absolute;inset:0;width:100%;height:100%}
-#uso-geo .row{grid-template-columns:minmax(130px,200px) minmax(0,1fr) 180px}
+#uso-geo .row{grid-template-columns:minmax(130px,200px) minmax(0,1fr) 250px}
 .map path.m{stroke:var(--bg);stroke-width:.35}
 .map path.bioma{fill:none;stroke:var(--mut);stroke-width:1.2;stroke-dasharray:4 3}
 .map svg.blank path.m{stroke:var(--mut);stroke-width:.3}
@@ -119,6 +119,25 @@ tr.gt td:first-child{border-left:5px solid var(--bc)}
 .chip button{border:0;background:none;cursor:pointer;font-size:16px;min-width:28px;min-height:28px;color:var(--mut)}
 .imp{font-size:13px;color:var(--mut);white-space:nowrap}
 @media(max-width:980px){.intg{grid-template-columns:1fr}.intr{position:static;max-height:none}}
+.sg{border-left:5px solid #7a5a8c;margin-bottom:12px}.sg .seg button{min-height:44px;font-size:16px;padding:0 18px}
+/* títulos de cards mais visíveis */
+.kpi span{display:block;font-size:16px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.kc .l{font-size:16px;font-weight:600;color:var(--ink)}
+fieldset legend{font-size:17px;font-weight:700}
+.bh{font-size:17px}
+/* cards de filtro de imóvel em dois tons de cinza alternados */
+#if-geo fieldset,#if-int fieldset{background:light-dark(#f2f3f2,#1d221f);border-color:light-dark(#d3d7d4,#343b37)}
+#if-geo .maps2>fieldset:nth-child(even),#if-int .maps2>fieldset:nth-child(even){background:light-dark(#e4e7e5,#262c29)}
+#if-geo fieldset.sg,#if-int fieldset.sg{background:light-dark(#e4e7e5,#262c29)}
+#if-geo .grp,#if-int .grp{background:var(--bg)}
+.red{color:#c0392b;font-weight:700}
+.urow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:4px 0}
+.urow input{width:72px}
+.urow>span:first-child{min-width:128px;font-weight:600}
+.urow .seg button{min-height:36px;padding:0 12px}
+.urow input:disabled{opacity:.45}
+.track i{box-shadow:inset 0 0 0 .5px rgba(0,0,0,.08)}
+tr.gt td{background:color-mix(in srgb,var(--bc) 14%,var(--bg));font-weight:700}
 /* console SQL */
 .sqlgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,340px);gap:20px;align-items:start}
 textarea{font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;width:100%;resize:vertical}
@@ -174,9 +193,9 @@ textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 <div id="p-geo" class="pane" hidden>
 <section><h2>Filtros de imóvel</h2><p class="q">Definem quais imóveis entram nas contas desta aba.</p><div id="if-geo"></div></section>
 <div class="kpis" id="k-geo"></div>
-<section><h2>Uso da terra nos imóveis selecionados</h2><p class="q">Área por uso (MapBiomas) e parcela potencialmente degradada (LAPIG para pastagem, LDI para os demais usos; Relatório 2, Quadro 3). ● marca os usos que entram na área potencialmente degradada.</p>
-<div class="legend"><span style="--c:#b5543a">Potencialmente degradada</span><span style="--c:#9aa79f">Não degradada</span></div><div class="rows" id="uso-geo"></div>
-<h3>Composição de uso por grupo de tipologia</h3><div class="legend"><span style="--c:#c9a227">Agricultura</span><span style="--c:#8c4a2f">Pastagem</span><span style="--c:#d17a3a">Mosaico de usos</span><span style="--c:#4f6b55">Vegetação nativa</span></div><div class="rows" id="usog-geo"></div></section>
+<section><h2>Uso da terra nos imóveis selecionados</h2><p class="q">Cada barra é a área do uso; a maior barra é o uso com mais área. O trecho <b class="red">vermelho</b> é a parte potencialmente degradada, e o <b class="red">% em vermelho</b> à direita diz quanto do uso está degradado (LAPIG para pastagem, LDI para os demais; Relatório 2, Quadro 3). Área potencialmente degradada do BI = agricultura + pastagem + mosaico.</p>
+<div class="legend"><span style="--c:#d73027">Potencialmente degradada</span><span style="--c:#bbb">Não degradada (cor do uso)</span></div><div class="rows" id="uso-geo"></div>
+<h3>Composição de uso por grupo de tipologia</h3><div class="legend"><span style="--c:#E974ED">Agricultura</span><span style="--c:#EDDE8E">Pastagem</span><span style="--c:#FFEFC3">Mosaico de usos</span><span style="--c:#1F8D49">Vegetação nativa</span></div><div class="rows" id="usog-geo"></div></section>
 <section><h2>Construtor de mapas — território</h2><div id="mb-geo"></div></section>
 <section><h2>Seleção por tipologia</h2><div class="scroll"><table id="tip-geo"></table></div></section>
 <section><h2>Aridez e risco fundiário</h2><div class="maps2"><div><h3>Área por classe de aridez</h3><div class="rows" id="ar-geo"></div></div><div><h3>Área por risco fundiário</h3><div class="rows" id="rf-geo"></div></div></div></section>
@@ -186,7 +205,7 @@ textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 <div class="intg">
 <div class="intl">
 <section><p class="q">Só os municípios que passam em todas as condições aparecem no mapa. O número cinza ao lado de cada condição é quantos municípios ela elimina sozinha. Variáveis geo usadas aqui contam todos os imóveis do município.</p><div id="fl-int"></div></section>
-<section><h2><span class="step">2</span>Filtros de imóvel</h2><p class="q">Definem quais imóveis são contados. A área potencialmente degradada soma os usos marcados.</p><div id="if-int"></div></section>
+<section><h2><span class="step">2</span>Filtros de imóvel</h2><p class="q">Definem quais imóveis são contados. Área potencialmente degradada do BI = agricultura + pastagem + mosaico.</p><div id="if-int"></div></section>
 <section><div id="ctl-int"></div></section>
 </div>
 <aside class="intr" aria-label="Resultado da seleção">

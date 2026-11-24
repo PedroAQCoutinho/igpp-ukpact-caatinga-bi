@@ -1,7 +1,9 @@
 -- Extração por imóvel para o BI (só leitura). Uma linha por imóvel, SEM cod_imovel e SEM geometria.
 -- Executada por scripts/extrair_imoveis.py (service=curupira), que grava direto em data/local/imoveis.parquet
 -- e imprime só totais. Áreas arredondadas a 0,1 ha.
--- área potencialmente degradada = agricultura degradada + pastagem degradada, nulos como zero (Pedro, 24/11/2026)
+-- área potencialmente degradada = agricultura + pastagem + mosaico degradados, nulos como zero (Pedro, 24/11/2026, 20h).
+-- A extração de 24/11 (16h) usou agricultura + pastagem; o arquivo local foi recalculado a partir dos componentes
+-- (scripts/extrair_imoveis.py --recalcular-degradada). Esta versão ainda não rodou: mostrar a Pedro antes.
 SELECT
     lpad(c.cod_municipio_ibge::text, 7, '0')               AS codmun,
     c.uf                                                   AS uf,
@@ -19,7 +21,8 @@ SELECT
     round(s.vn_degradada_ha, 1)::real                      AS vn_deg_ha,
     round(s.vn_nao_degradada_ha, 1)::real                  AS vn_ndeg_ha,
     round(coalesce(s.agricultura_degradada_ha, 0)
-        + coalesce(s.pastagem_degradada_ha, 0), 1)::real   AS area_pot_degradada_ha,
+        + coalesce(s.pastagem_degradada_ha, 0)
+        + coalesce(s.mosaico_degradado_ha, 0), 1)::real    AS area_pot_degradada_ha,
     s.apto_criterio_status                                 AS apto_status,
     s.apto_desmatamento_2023                               AS apto_desm_2023,
     s.apto_desmatamento_2008                               AS apto_desm_2008,

@@ -48,5 +48,6 @@ Depois de extrair: `python3 scripts/conferir_imoveis.py` (compara com o Relatór
 
 - **Conferência com o Relatório 2:** imóveis (2.478.646), tipologias, risco fundiário e aridez A + B batem. A área total do arquivo dá 71.895.906 ha contra 71.897.270 ha (−1.364 ha, −0,0019%), por causa do arredondamento a 0,1 ha; diferença aceita por Pedro.
 - **Tipologias:** no banco estão escritas `Pronaf`, `Pronaf B`, `Minifundio` e `Medio`; o BI exibe como no relatório (PRONAF, PRONAF B, Minifúndio, Médio). No console SQL vale a grafia do banco.
-- **Área potencialmente degradada:** padrão = agricultura + pastagem degradadas (Pedro, 24/11/2026). O filtro "uso da terra" permite somar outros usos.
+- **Área potencialmente degradada:** agricultura + pastagem + mosaico degradados, nulos como zero, fixa (Pedro, 24/11/2026, 20h; antes era agricultura + pastagem). O arquivo local foi recalculado a partir dos componentes (`python3 scripts/extrair_imoveis.py --recalcular-degradada`), sem nova extração. Total: 12.680.091 ha no CAR; 12.361.557 ha nos 1.095 municípios das abas 3 e 4.
+- **Salvaguardas:** elegível (Eco Invest) = `apto_todos`. O cenário sem UCUS foi removido do BI; a coluna `apto_todos_semucus` continua no arquivo, para o console SQL.
 - **Municípios:** o CAR tem 1.213 municípios; 118 deles (91.699 imóveis, 3,9 mi ha) estão fora dos 1.095 da base socioeconômica e **não entram nas abas 3 e 4**. Por isso os totais dessas abas (2.386.947 imóveis) são menores que o universo do relatório. A lista está em `data/manifest.json`.

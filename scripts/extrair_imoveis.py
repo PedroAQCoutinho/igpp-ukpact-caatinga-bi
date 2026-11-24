@@ -6,6 +6,8 @@
 - Depois gera data/geo_mun_resumo.parquet (agregado por município, versionado) e registra tudo
   em data/manifest.json. A conferência com o Relatório 2 é feita por scripts/conferir_imoveis.py.
 Uso: python3 scripts/extrair_imoveis.py
+     python3 scripts/extrair_imoveis.py --so-pos                 (só resumo e manifest, sem banco)
+     python3 scripts/extrair_imoveis.py --recalcular-degradada   (recalcula area_pot_degradada_ha a partir dos componentes, sem banco)
 """
 import hashlib
 import json
@@ -22,6 +24,9 @@ RAIZ = Path(__file__).resolve().parent.parent
 SQL = RAIZ / "extract" / "01_imoveis.sql"
 SAIDA = RAIZ / "data" / "local" / "imoveis.parquet"
 RESUMO = RAIZ / "data" / "geo_mun_resumo.parquet"
+# Área potencialmente degradada (Pedro, 24/11/2026, 20h): agricultura + pastagem + mosaico degradados, nulos como zero
+DEF_DEG = "agricultura_degradada_ha + pastagem_degradada_ha + mosaico_degradado_ha, nulos como zero (Pedro, 24/11/2026, 20h; antes: agricultura + pastagem)"
+COMP_DEG = ["agri_deg_ha", "past_deg_ha", "mos_deg_ha"]
 LOTE = 200_000
 
 CATEG = ["codmun", "uf", "tipologia", "porte", "aridez", "risco_fund"]
@@ -32,6 +37,9 @@ def main():
     sql = SQL.read_text(encoding="utf-8")
     if "--so-pos" in sys.argv:  # refaz só o resumo e o manifest a partir do Parquet já extraído
         return pos(sql, None, None)
+    if "--recalcular-degradada" in sys.argv:  # nova definição sem nova extração
+        recalcular_degradada()
+        return pos(sql, None, None, recalculo=True)
     SAIDA.parent.mkdir(parents=True, exist_ok=True)
     tmp = SAIDA.with_suffix(".parquet.tmp")
     t0 = time.time()
@@ -73,7 +81,22 @@ def main():
     pos(sql, seg, n)
 
 
-def pos(sql, seg, n):
+def recalcular_degradada():
+    import pyarrow.compute as pc
+    t = pq.read_table(SAIDA, read_dictionary=CATEG)
+    soma = None
+    for c in COMP_DEG:
+        v = pc.fill_null(t[c], 0)
+        soma = v if soma is None else pc.add(soma, v)
+    soma = pc.round(soma, 1).cast(pa.float32())
+    t = t.set_column(t.schema.get_field_index("area_pot_degradada_ha"), "area_pot_degradada_ha", soma)
+    tmp = SAIDA.with_suffix(".parquet.tmp")
+    pq.write_table(t, tmp, compression="zstd", compression_level=9)
+    tmp.replace(SAIDA)
+    print(f"area_pot_degradada_ha recalculada ({' + '.join(COMP_DEG)}) em {t.num_rows:,} imóveis".replace(",", "."))
+
+
+def pos(sql, seg, n, recalculo=False):
     mb = SAIDA.stat().st_size / 1e6
 
     # Agregado por município (versionado): visões padrão e variáveis geo sem o arquivo local
@@ -81,8 +104,6 @@ def pos(sql, seg, n):
       SELECT codmun, count(*)::INT AS n, round(sum(area_ha), 1) AS area, round(sum(area_pot_degradada_ha), 1) AS deg,
         round(coalesce(sum(area_pot_degradada_ha) FILTER (WHERE apto_todos), 0), 1) AS elig,
         count(*) FILTER (WHERE apto_todos)::INT AS apt,
-        round(coalesce(sum(area_pot_degradada_ha) FILTER (WHERE apto_todos_semucus), 0), 1) AS elig_semucus,
-        count(*) FILTER (WHERE apto_todos_semucus)::INT AS apt_semucus,
         {", ".join(f"count(*) FILTER (WHERE {c})::INT AS {c}" for c in ["apto_status", "apto_desm_2023", "apto_desm_2008", "apto_embargo", "apto_fpnd", "apto_uc", "apto_uc_semucus", "apto_ti_tq", "apto_areas_degradadas", "apto_todos", "apto_todos_semucus"])}
       FROM read_parquet('{SAIDA}') GROUP BY codmun ORDER BY codmun
     ) TO '{RESUMO}' (FORMAT parquet, COMPRESSION zstd)""")
@@ -91,15 +112,21 @@ def pos(sql, seg, n):
 
     man_p = RAIZ / "data" / "manifest.json"
     man = json.loads(man_p.read_text(encoding="utf-8"))
-    man["extracoes"]["imoveis"] = {
-        "sql": "extract/01_imoveis.sql", "sha256_sql": hashlib.sha256(sql.encode()).hexdigest(),
-        "script": "scripts/extrair_imoveis.py", "servico": "curupira (só leitura)",
-        "executado_em": datetime.now().astimezone().isoformat(timespec="seconds"), "duracao_s": round(seg) if seg else None,
-        "saida_local": "data/local/imoveis.parquet (fora do git)", "tamanho_mb": round(mb, 1),
-        "linhas": tot[0], "area_ha": tot[1], "area_pot_degradada_ha": tot[2], "municipios": tot[3],
-        "definicao_area_pot_degradada": "agricultura_degradada_ha + pastagem_degradada_ha, nulos como zero (Pedro, 24/11/2026)",
-        "resumo_versionado": "data/geo_mun_resumo.parquet",
-    }
+    ent = man["extracoes"].setdefault("imoveis", {})
+    if seg is not None:  # extração nova: registra a SQL que rodou
+        ent.update({"sql": "extract/01_imoveis.sql", "sha256_sql": hashlib.sha256(sql.encode()).hexdigest(),
+                    "executado_em": datetime.now().astimezone().isoformat(timespec="seconds"), "duracao_s": round(seg)})
+        ent.pop("recalculo_area_pot_degradada", None)
+    if recalculo:
+        ent["recalculo_area_pot_degradada"] = {
+            "feito_em": datetime.now().astimezone().isoformat(timespec="seconds"),
+            "como": f"sem nova extração: {' + '.join(COMP_DEG)} do próprio arquivo (componentes já arredondados a 0,1 ha), resultado arredondado a 0,1 ha",
+            "nota": "a SQL em extract/01_imoveis.sql foi atualizada para a nova definição e ainda não rodou nessa forma; sha256_sql acima é a da extração de " + ent.get("executado_em", "?"),
+        }
+    ent.update({"script": "scripts/extrair_imoveis.py", "servico": "curupira (só leitura)",
+                "saida_local": "data/local/imoveis.parquet (fora do git)", "tamanho_mb": round(mb, 1),
+                "linhas": tot[0], "area_ha": tot[1], "area_pot_degradada_ha": tot[2], "municipios": tot[3],
+                "definicao_area_pot_degradada": DEF_DEG, "resumo_versionado": "data/geo_mun_resumo.parquet"})
     man_p.write_text(json.dumps(man, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
 
