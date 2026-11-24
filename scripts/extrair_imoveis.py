@@ -28,7 +28,10 @@ CATEG = ["codmun", "uf", "tipologia", "porte", "aridez", "risco_fund"]
 
 
 def main():
+    import sys
     sql = SQL.read_text(encoding="utf-8")
+    if "--so-pos" in sys.argv:  # refaz só o resumo e o manifest a partir do Parquet já extraído
+        return pos(sql, None, None)
     SAIDA.parent.mkdir(parents=True, exist_ok=True)
     tmp = SAIDA.with_suffix(".parquet.tmp")
     t0 = time.time()
@@ -67,6 +70,11 @@ def main():
     seg = time.time() - t0
     mb = SAIDA.stat().st_size / 1e6
     print(f"imoveis.parquet: {n:,} linhas, {mb:.1f} MB, {seg:.0f} s".replace(",", "."))
+    pos(sql, seg, n)
+
+
+def pos(sql, seg, n):
+    mb = SAIDA.stat().st_size / 1e6
 
     # Agregado por município (versionado): visões padrão e variáveis geo sem o arquivo local
     duckdb.sql(f"""COPY (
@@ -78,7 +86,7 @@ def main():
         {", ".join(f"count(*) FILTER (WHERE {c})::INT AS {c}" for c in ["apto_status", "apto_desm_2023", "apto_desm_2008", "apto_embargo", "apto_fpnd", "apto_uc", "apto_uc_semucus", "apto_ti_tq", "apto_areas_degradadas", "apto_todos", "apto_todos_semucus"])}
       FROM read_parquet('{SAIDA}') GROUP BY codmun ORDER BY codmun
     ) TO '{RESUMO}' (FORMAT parquet, COMPRESSION zstd)""")
-    tot = duckdb.sql(f"SELECT count(*), round(sum(area_ha)), round(sum(area_pot_degradada_ha)), count(DISTINCT codmun) FROM read_parquet('{SAIDA}')").fetchone()
+    tot = duckdb.connect().execute(f"SELECT count(*), round(sum(area_ha)), round(sum(area_pot_degradada_ha)), count(DISTINCT codmun) FROM read_parquet('{SAIDA}')").fetchone()
     print(f"totais: {tot[0]} imóveis; {tot[1]:.0f} ha; {tot[2]:.0f} ha pot. degradados; {tot[3]} municípios")
 
     man_p = RAIZ / "data" / "manifest.json"
@@ -86,7 +94,7 @@ def main():
     man["extracoes"]["imoveis"] = {
         "sql": "extract/01_imoveis.sql", "sha256_sql": hashlib.sha256(sql.encode()).hexdigest(),
         "script": "scripts/extrair_imoveis.py", "servico": "curupira (só leitura)",
-        "executado_em": datetime.now().astimezone().isoformat(timespec="seconds"), "duracao_s": round(seg),
+        "executado_em": datetime.now().astimezone().isoformat(timespec="seconds"), "duracao_s": round(seg) if seg else None,
         "saida_local": "data/local/imoveis.parquet (fora do git)", "tamanho_mb": round(mb, 1),
         "linhas": tot[0], "area_ha": tot[1], "area_pot_degradada_ha": tot[2], "municipios": tot[3],
         "definicao_area_pot_degradada": "agricultura_degradada_ha + pastagem_degradada_ha, nulos como zero (Pedro, 24/11/2026)",

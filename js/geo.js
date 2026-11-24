@@ -2,6 +2,9 @@
 import { q, status } from './db.js';
 
 export const TIP = ['AST', 'PCT', 'PRONAF', 'PRONAF B', 'Minifúndio', 'Pequeno', 'Médio', 'Grande'];
+// Valores de tipologia_car2 no banco → rótulos do Relatório 2 (decisão de Pedro, 24/11: exibir como no relatório)
+export const TIPDB = ['AST', 'PCT', 'Pronaf', 'Pronaf B', 'Minifundio', 'Pequeno', 'Medio', 'Grande'];
+const DB2TIP = new Map(TIPDB.map((v, i) => [v, TIP[i]]));
 export const AR = ['A', 'B', 'C', 'D', 'E', 'F'];
 export const RF = ['MUITO_BAIXO', 'BAIXO', 'MODERADO_BAIXO', 'MODERADO', 'ALTO'];
 // Critérios de salvaguarda (colunas booleanas do arquivo de imóveis)
@@ -20,7 +23,7 @@ const inList = (col, vals) => `${col} IN (${vals.map(lit).join(',')})`;
 export function whereOf(fi) {
   const w = [];
   if (!fi) return w;
-  if (fi.tip.size < TIP.length) w.push(fi.tip.size ? inList('tipologia', [...fi.tip].map(i => TIP[i])) : 'false');
+  if (fi.tip.size < TIP.length) w.push(fi.tip.size ? inList('tipologia', [...fi.tip].map(i => TIPDB[i])) : 'false');
   if (fi.ar.size < AR.length) w.push(fi.ar.size ? inList('aridez', [...fi.ar].map(i => AR[i])) : 'false');
   if (fi.rf.size < RF.length) w.push(fi.rf.size ? inList('risco_fund', [...fi.rf].map(i => RF[i])) : 'false');
   if (fi.degmin != null && isFinite(fi.degmin)) w.push(`area_pot_degradada_ha >= ${+fi.degmin}`);
@@ -55,7 +58,7 @@ export async function aggAll(fi) {
   const by = new Map(), tip = new Map(), ar = new Map(), rf = new Map();
   for (const r of rows) {
     const o = { n: r.n, area: r.area || 0, deg: r.deg || 0, elig: r.elig || 0, apt: r.apt };
-    if (!r.gt) push(tip, r.codmun, r.tipologia ?? 'Sem tipologia', o);
+    if (!r.gt) push(tip, r.codmun, DB2TIP.get(r.tipologia) ?? r.tipologia ?? 'Sem tipologia', o);
     else if (!r.ga) push(ar, r.codmun, r.aridez ?? 'Sem classe', o);
     else if (!r.gr) push(rf, r.codmun, r.risco_fund ?? 'Sem classe', o);
     else { for (const [c] of CRIT) o[c] = r[c]; o.apto_todos = r.apto_todos; o.apto_todos_semucus = r.apto_todos_semucus; by.set(r.codmun, o); }

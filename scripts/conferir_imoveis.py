@@ -11,6 +11,8 @@ import duckdb
 RAIZ = Path(__file__).resolve().parent.parent
 ARQ = RAIZ / "data" / "local" / "imoveis.parquet"
 
+DB2REL = {"Pronaf": "PRONAF", "Pronaf B": "PRONAF B", "Minifundio": "Minifúndio", "Medio": "Médio"}
+
 # Relatório 2 (especificação v2, seção 4.2)
 ESPERADO = {
     "universo": {"imoveis": 2478646, "area_ha": 71897270},
@@ -35,9 +37,12 @@ def main():
     n, area = con.execute("SELECT count(*), sum(area_ha) FROM i").fetchone()
     cmp("universo", "imóveis", n, ESPERADO["universo"]["imoveis"])
     # áreas arredondadas a 0,1 ha por imóvel: tolerância de 0,05 ha × nº de imóveis no pior caso, mas o normal é < 1.000 ha
-    cmp("universo", "área (ha)", area, ESPERADO["universo"]["area_ha"], tol=1000)
+    # diferença de -1.364 ha aceita por Pedro em 24/11/2026 (arredondamento a 0,1 ha + float32)
+    cmp("universo", "área (ha)", area, ESPERADO["universo"]["area_ha"], tol=1500)
     for col, grupo in (("tipologia", "tipologia"), ("risco_fund", "risco_fund")):
         obs = dict(con.execute(f"SELECT {col}, count(*) FROM i GROUP BY 1").fetchall())
+        if col == "tipologia":  # grafia do banco → rótulo do Relatório 2 (Pedro, 24/11/2026)
+            obs = {DB2REL.get(k, k): v for k, v in obs.items()}
         for k, esp in ESPERADO[grupo].items():
             cmp(grupo, k, obs.pop(k, 0), esp)
         for k, v in obs.items():  # categorias que não estão no relatório

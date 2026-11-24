@@ -44,7 +44,7 @@ FROM imoveis;`],
   round(s.pr_ag_caprinos_e_ovinos_rs/1e6, 1) AS vbp_caprinos_rs_mi,
   count(*) AS imoveis, round(sum(i.area_pot_degradada_ha)) AS deg_ha
 FROM socio_municipal s JOIN imoveis i USING (codmun)
-WHERE i.tipologia IN ('AST','PCT','PRONAF','PRONAF B')
+WHERE i.tipologia IN ('AST','PCT','Pronaf','Pronaf B')  -- grafia do banco
 GROUP BY ALL ORDER BY deg_ha DESC LIMIT 25;`],
   ['Municípios da base sem imóveis no CAR', `SELECT s.codmun, s.municipio, s.uf FROM socio_municipal s
 WHERE s.codmun NOT IN (SELECT DISTINCT codmun FROM imoveis) ORDER BY 1;`],

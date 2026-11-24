@@ -118,7 +118,9 @@ function FilterList(el, keys, onChange, title, single) {
   el.addEventListener('input', e => { if (e.target.dataset.k !== 'x') return; const d = e.target.closest('[data-i]'); rows[+d.dataset.i].x = e.target.value === '' ? null : +e.target.value; onChange() });
   draw(); return api;
 }
-const val = (cod, k, ag, g) => { const r = RM.get(cod); return r ? V[k].f(r, ag || '', g ? g.get(cod) : null) : null };
+// Geo: município com CAR mas sem imóvel que passe nos filtros vale zero (não "sem dado na fonte")
+const GZ = Object.freeze({ n: 0, area: 0, deg: 0, elig: 0, apt: 0, ...Object.fromEntries(CRIT.map(([c]) => [c, 0])) });
+const val = (cod, k, ag, g) => { const r = RM.get(cod); if (!r) return null; let o = g ? g.get(cod) : null; if (g && !o && BASEAGG.by.has(cod)) o = GZ; return V[k].f(r, ag || '', o) };
 // Variáveis geo no recorte contam todos os imóveis do município (agregação "todos", em cache)
 function passes(cod, filters) {
   for (const f of filters) {
