@@ -60,6 +60,7 @@ fieldset legend{font-size:14px;font-weight:600;color:var(--ink);padding:0 4px}
 .chk label{display:flex;gap:4px;align-items:center;color:var(--ink)}
 .map{position:relative;min-height:460px;background:var(--soft);border-radius:8px;overflow:hidden}
 .map svg{position:absolute;inset:0;width:100%;height:100%}
+#uso-geo .row{grid-template-columns:minmax(130px,200px) minmax(0,1fr) 180px}
 .map path.m{stroke:var(--bg);stroke-width:.35}
 .map path.bioma{fill:none;stroke:var(--mut);stroke-width:1.2;stroke-dasharray:4 3}
 .map svg.blank path.m{stroke:var(--mut);stroke-width:.3}
@@ -155,6 +156,9 @@ textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 <div id="p-geo" class="pane" hidden>
 <section><h2>Filtros de imóvel</h2><p class="q">Definem quais imóveis entram nas contas desta aba.</p><div id="if-geo"></div></section>
 <div class="kpis" id="k-geo"></div>
+<section><h2>Uso da terra nos imóveis selecionados</h2><p class="q">Área por uso (MapBiomas) e parcela potencialmente degradada (LAPIG para pastagem, LDI para os demais usos; Relatório 2, Quadro 3). ● marca os usos que entram na área potencialmente degradada.</p>
+<div class="legend"><span style="--c:#b5543a">Potencialmente degradada</span><span style="--c:#9aa79f">Não degradada</span></div><div class="rows" id="uso-geo"></div>
+<h3>Composição de uso por grupo de tipologia</h3><div class="legend"><span style="--c:#c9a227">Agricultura</span><span style="--c:#8c4a2f">Pastagem</span><span style="--c:#d17a3a">Mosaico de usos</span><span style="--c:#4f6b55">Vegetação nativa</span></div><div class="rows" id="usog-geo"></div></section>
 <section><h2>Construtor de mapas — território</h2><div id="mb-geo"></div></section>
 <section><h2>Seleção por tipologia</h2><div class="scroll"><table id="tip-geo"></table></div></section>
 <section><h2>Aridez e risco fundiário</h2><div class="maps2"><div><h3>Área por classe de aridez</h3><div class="rows" id="ar-geo"></div></div><div><h3>Área por risco fundiário</h3><div class="rows" id="rf-geo"></div></div></div></section>
@@ -163,7 +167,7 @@ textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 <div id="p-int" class="pane" hidden>
 <section><h2><span class="step">1</span>Universo de municípios</h2><p class="q">Só os municípios que passam em todos os filtros aparecem nos mapas. Variáveis geo usadas aqui contam todos os imóveis do município.</p><div id="fl-int"></div></section>
 <section><h2><span class="step">2</span>Filtros de imóvel</h2><p class="q">Definem quais imóveis são contados nos dois mapas e na tabela.</p><div id="if-int"></div></section>
-<section><h2><span class="step">3</span>Mapas</h2><div id="ctl-int"></div><p class="q" id="sum-int"></p>
+<section><h2><span class="step">3</span>Mapas</h2><p class="q">A área potencialmente degradada soma os usos marcados no passo 2.</p><div id="ctl-int"></div><p class="q" id="sum-int"></p>
 <div class="maps2"><div><h3>Número de imóveis</h3><div class="map" id="m1"></div><div class="leg" id="l1"></div></div><div><h3>Área potencialmente degradada (ha)</h3><div class="map" id="m2"></div><div class="leg" id="l2"></div></div></div></section>
 <section><h2><span class="step">4</span>Área potencialmente degradada por tipologia na seleção</h2><div class="scroll"><table id="tip-int"></table></div><div class="fr" style="margin-top:10px"><button class="btn" id="cp-int">Copiar visão (JSON)</button></div><pre id="vj-int" hidden></pre></section>
 </div>

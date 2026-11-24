@@ -1,7 +1,7 @@
 // BI Caatinga — porte do prototipo/app.js para dados reais (DuckDB-WASM + Parquet).
 // Comportamento e visual seguem o protótipo aprovado; mudanças de dados estão comentadas.
 import { init, q, status } from './db.js';
-import { TIP, AR, RF, CRIT, CEN, aggAll, sumBy } from './geo.js';
+import { TIP, AR, RF, CRIT, CEN, USOS, DEF_USO, aggAll, sumBy } from './geo.js';
 import { initConsole } from './console.js';
 
 // ---------- utilidades ----------
@@ -56,7 +56,11 @@ const V = {
   cvbp: { l: 'Crédito por R$ produzido', u: 'centavos', g: 'SICOR', ag: 'both', f: (r, a) => a ? rat(r[crA(a)], r[prA(a)]) : rat(r.cr_volume_rs, r.pr_agropecuaria_rs) },
   n_im: { l: 'Imóveis (CAR)', u: 'n', g: 'Geo', ext: 1, geo: 1, f: (r, a, g) => g?.n ?? null },
   ar_im: { l: 'Área dos imóveis', u: 'ha', g: 'Geo', ext: 1, geo: 1, f: (r, a, g) => g?.area ?? null },
-  deg: { l: 'Área potencialmente degradada', u: 'ha', g: 'Geo', ext: 1, geo: 1, f: (r, a, g) => g?.deg ?? null },
+  deg: { l: 'Área potencialmente degradada (usos escolhidos)', u: 'ha', g: 'Geo', ext: 1, geo: 1, f: (r, a, g) => g?.deg ?? null },
+  ...Object.fromEntries([['ag', 'Agricultura', 0], ['pa', 'Pastagem', 1], ['mo', 'Mosaico de usos', 2], ['vn', 'Vegetação nativa', 3]].flatMap(([k, l, i]) => [
+    ['u_' + k, { l: 'Área de ' + l.toLowerCase(), u: 'ha', g: 'Geo', ext: 1, geo: 1, f: (r, a, g) => g?.u?.[i] ?? null }],
+    ['f_' + k, { l: l + ' potencialmente degradada', u: 'ha', g: 'Geo', ext: 1, geo: 1, f: (r, a, g) => g?.f?.[i] ?? null }],
+    ['p_' + k, { l: l + ': % degradada', u: '%', g: 'Geo', geo: 1, f: (r, a, g) => g?.f ? rat(g.f[i], g.u[i]) : null }]])),
   degp: { l: 'Área degradada / área dos imóveis', u: '%', g: 'Geo', geo: 1, f: (r, a, g) => g ? rat(g.deg, g.area) : null },
   eleg: { l: 'Área degradada em imóveis aptos', u: 'ha', g: 'Geo', ext: 1, geo: 1, f: (r, a, g) => g?.elig ?? null },
   aptp: { l: 'Imóveis aptos (todas as salvaguardas)', u: '%', g: 'Geo', geo: 1, f: (r, a, g) => g ? rat(g.apt, g.n) : null },
@@ -79,6 +83,7 @@ function ImovelFilters(el, onChange, { cenario = false } = {}) {
  <fieldset><legend>Dinâmica da aridez (ASD = área suscetível à desertificação)</legend>${ARG.map(([k, l, it]) => grp(k, 'a-' + k, l, it.map(([i, c, d]) => [i, c, d]), 'ar')).join('')}
  <div class="quick"><button data-q="asd">Só em ASD hoje (A, B, C, E)</button><button data-q="noasd">Só fora de ASD (D, F)</button><button data-q="all">Todas</button></div></fieldset>
  <fieldset><legend>Risco fundiário</legend><div class="chk" style="display:grid;gap:4px">${RFL.map(([l, d], i) => `<label><input type="checkbox" data-g="rf" value="${i}" checked> ${l} <small>(${esc(d)})</small></label>`).join('')}</div></fieldset>
+ <fieldset><legend>Uso da terra: o que entra na área potencialmente degradada</legend><div class="chk">${USOS.map(([l, col], i) => `<label><input type="checkbox" data-g="uso" value="${i}"${DEF_USO.has(i) ? ' checked' : ''}> <span class="dot" style="--bc:${col}"></span>${l}</label>`).join('')}</div><p class="hint">Padrão: agricultura + pastagem (definição de Pedro, 24/11/2026). Os quadros de uso mostram os quatro usos de qualquer forma.</p></fieldset>
  <fieldset><legend>Degradação e salvaguardas</legend>
  <div class="fr">Área potencialmente degradada ≥ <input type="number" data-k="degmin" min="0" placeholder="ha"><span class="u">ha</span></div>
  <label class="fr">Salvaguardas <select data-k="apt">${opt('t', 'Todos os imóveis')}${opt('s', 'Só aptos em todas')}${opt('n', 'Só não aptos')}</select></label>
@@ -90,14 +95,14 @@ function ImovelFilters(el, onChange, { cenario = false } = {}) {
   el.addEventListener('input', e => { if (e.target.type === 'number') deb() });
   el.addEventListener('click', e => {
     const qk = e.target.dataset.q; if (qk) { el.querySelectorAll('[data-g=ar]').forEach(x => x.checked = qk === 'all' || (qk === 'asd') === [0, 1, 2, 4].includes(+x.value)); sync(); onChange() }
-    if (e.target.dataset.reset != null) { el.querySelectorAll('input[type=checkbox]').forEach(x => x.checked = true); el.querySelector('[data-k=degmin]').value = ''; el.querySelector('[data-k=apt]').value = 't'; const c = el.querySelector('[data-k=cen]'); if (c) c.value = 'com'; sync(); onChange() }
+    if (e.target.dataset.reset != null) { el.querySelectorAll('input[type=checkbox]').forEach(x => x.checked = x.dataset.g === 'uso' ? DEF_USO.has(+x.value) : true); el.querySelector('[data-k=degmin]').value = ''; el.querySelector('[data-k=apt]').value = 't'; const c = el.querySelector('[data-k=cen]'); if (c) c.value = 'com'; sync(); onChange() }
   });
   return {
     get() {
       const g = n => new Set([...el.querySelectorAll(`[data-g=${n}]:checked`)].map(x => +x.value)); const v = el.querySelector('[data-k=degmin]').value;
-      return { tip: g('tip'), ar: g('ar'), rf: g('rf'), degmin: v === '' ? null : +v, apt: el.querySelector('[data-k=apt]').value, cen: el.querySelector('[data-k=cen]')?.value || 'com' }
+      return { tip: g('tip'), ar: g('ar'), rf: g('rf'), uso: g('uso'), degmin: v === '' ? null : +v, apt: el.querySelector('[data-k=apt]').value, cen: el.querySelector('[data-k=cen]')?.value || 'com' }
     },
-    json() { const f = this.get(); return { tipologias: [...f.tip].map(i => TIP[i]), aridez: [...f.ar].map(i => AR[i]), risco_fundiario: [...f.rf].map(i => RFL[i][0]), area_degradada_min_ha: f.degmin, salvaguardas: f.apt, cenario_salvaguardas: CEN[f.cen][0] } }
+    json() { const f = this.get(); return { tipologias: [...f.tip].map(i => TIP[i]), aridez: [...f.ar].map(i => AR[i]), risco_fundiario: [...f.rf].map(i => RFL[i][0]), usos_area_degradada: [...f.uso].map(i => USOS[i][0]), area_degradada_min_ha: f.degmin, salvaguardas: f.apt, cenario_salvaguardas: CEN[f.cen][0] } }
   };
 }
 
@@ -119,7 +124,7 @@ function FilterList(el, keys, onChange, title, single) {
   draw(); return api;
 }
 // Geo: município com CAR mas sem imóvel que passe nos filtros vale zero (não "sem dado na fonte")
-const GZ = Object.freeze({ n: 0, area: 0, deg: 0, elig: 0, apt: 0, ...Object.fromEntries(CRIT.map(([c]) => [c, 0])) });
+const GZ = Object.freeze({ n: 0, area: 0, deg: 0, elig: 0, apt: 0, u: [0, 0, 0, 0], f: [0, 0, 0, 0], ...Object.fromEntries(CRIT.map(([c]) => [c, 0])) });
 const val = (cod, k, ag, g) => { const r = RM.get(cod); if (!r) return null; let o = g ? g.get(cod) : null; if (g && !o && BASEAGG.by.has(cod)) o = GZ; return V[k].f(r, ag || '', o) };
 // Variáveis geo no recorte contam todos os imóveis do município (agregação "todos", em cache)
 function passes(cod, filters) {
@@ -313,7 +318,7 @@ async function geo() {
   const uni = new Set(universe()); let n = 0, ar = 0, d = 0, e = 0;
   for (const [c, o] of a.by) if (uni.has(c)) { n += o.n; ar += o.area; d += o.deg; e += o.elig }
   $('k-geo').innerHTML = kpi(nf0.format(n), 'Imóveis na seleção') + kpi(nf0.format(ar) + ' ha', 'Área dos imóveis') + kpi(nf0.format(d) + ' ha', 'Área potencialmente degradada') + kpi(nf0.format(e) + ' ha', 'Degradada em imóveis aptos');
-  tipTable($('tip-geo'), sumBy(a.tip, uni, TIP));
+  const st = sumBy(a.tip, uni, TIP); tipTable($('tip-geo'), st, a.uso); usoBlock(st, a.uso);
   const sa = sumBy(a.ar, uni, AR), sr = sumBy(a.rf, uni, RF);
   const arL = [...AR.map((k, i) => [ARL[i], sa.get(k).area]), ...[...sa.keys()].filter(k => !AR.includes(k)).map(k => [k, sa.get(k).area])];
   const AC = ['#b5543a', '#b5543a', '#8a8f8c', '#8a8f8c', '#3d6e8f', '#3d6e8f', '#c7ccc8'], am = Math.max(...arL.map(x => x[1]), 1);
@@ -321,14 +326,24 @@ async function geo() {
   const rfL = [...RF.map((k, i) => [`${RFL[i][0]} (${RFL[i][1]})`, sr.get(k).area]), ...[...sr.keys()].filter(k => !RF.includes(k)).map(k => [k, sr.get(k).area])], rm = Math.max(...rfL.map(x => x[1]), 1);
   $('rf-geo').innerHTML = rfL.map(([l, v]) => bar(l, 100 * v / rm, nf0.format(v) + ' ha')).join('');
 }
-function tipTable(el, t) {
-  const add = (a, x) => ({ n: a.n + x.n, area: a.area + x.area, deg: a.deg + x.deg, elig: a.elig + x.elig }), Z = { n: 0, area: 0, deg: 0, elig: 0 }, T = [...t.values()].reduce(add, Z);
-  const tr = (l, x, c = '', st = '') => `<tr${c}${st}><td>${l}</td><td>${nf0.format(x.n)}</td><td>${nf0.format(x.area)}</td><td>${nf0.format(x.deg)}</td><td>${pc(x.deg, T.deg)}</td><td>${pc(x.deg, x.area)}</td><td>${nf0.format(x.elig)}</td></tr>`;
+const z4 = () => [0, 0, 0, 0];
+function tipTable(el, t, uso) {
+  const add = (a, x) => ({ n: a.n + x.n, area: a.area + x.area, deg: a.deg + x.deg, elig: a.elig + x.elig, f: a.f.map((v, i) => v + x.f[i]) }), Z = { n: 0, area: 0, deg: 0, elig: 0, f: z4() }, T = [...t.values()].reduce(add, Z);
+  const us = [...uso].sort();
+  const tr = (l, x, c = '', st = '') => `<tr${c}${st}><td>${l}</td><td>${nf0.format(x.n)}</td><td>${nf0.format(x.area)}</td><td>${nf0.format(x.deg)}</td>${us.map(u => `<td>${nf0.format(x.f[u])}</td>`).join('')}<td>${pc(x.deg, T.deg)}</td><td>${pc(x.deg, x.area)}</td><td>${nf0.format(x.elig)}</td></tr>`;
   const CL = { af: '#4f6b55', hib: '#c4761a', eco: '#3d6e8f' };
   const outros = [...t.keys()].filter(k => !TIP.includes(k) && t.get(k).n);
-  el.innerHTML = '<thead><tr><th>Tipologia</th><th>Imóveis</th><th>Área (ha)</th><th>Área pot. degradada (ha)</th><th>% do total degradado</th><th>% da área do grupo</th><th>Degradada em aptos (ha)</th></tr></thead><tbody>' +
+  el.innerHTML = `<thead><tr><th>Tipologia</th><th>Imóveis</th><th>Área (ha)</th><th>Área pot. degradada (ha)</th>${us.map(u => `<th>…em ${USOS[u][0].toLowerCase()}</th>`).join('')}<th>% do total degradado</th><th>% da área do grupo</th><th>Degradada em aptos (ha)</th></tr></thead><tbody>` +
     TIPG.map(([k, l, ix]) => tr(`<span class="dot"></span>${l}`, ix.reduce((a, i) => add(a, t.get(TIP[i])), Z), ' class="gt"', ` style="--bc:${CL[k]}"`) + ix.map(i => tr('&nbsp;&nbsp;&nbsp;&nbsp;' + TIP[i], t.get(TIP[i]))).join('')).join('') +
     outros.map(k => tr(esc(k), t.get(k))).join('') + tr('Total', T, ' class="sel"') + '</tbody>'
+}
+function usoBlock(t, uso) { // quadro de uso da terra
+  const vs = [...t.values()], U = vs.reduce((a, x) => a.map((v, i) => v + x.u[i]), z4()), F = vs.reduce((a, x) => a.map((v, i) => v + x.f[i]), z4()), mx = Math.max(...U, 1);
+  $('uso-geo').innerHTML = USOS.map(([l, col], i) => `<div class="row"><span><span class="dot" style="--bc:${col}"></span>${l}${uso.has(i) ? ' ●' : ''}</span><div class="track"><i style="width:${100 * F[i] / mx}%;background:#b5543a"></i><i style="width:${100 * (U[i] - F[i]) / mx}%;background:${col};opacity:.55"></i></div><span class="v">${nf0.format(U[i])} ha · ${pc(F[i], U[i])}</span></div>`).join('');
+  $('usog-geo').innerHTML = TIPG.map(([g, l, ix]) => {
+    const u = ix.reduce((a, i) => a.map((v, j) => v + t.get(TIP[i]).u[j]), z4()), s = u.reduce((a, b) => a + b, 0) || 1;
+    return `<div class="row"><span>${l}</span><div class="track">${USOS.map(([lb, col], j) => `<i title="${lb}: ${pc(u[j], s)}" style="width:${100 * u[j] / s}%;background:${col}"></i>`).join('')}</div><span class="v">${pc(u[1], s)} pasto</span></div>`
+  }).join('');
 }
 // ---------- aba 4 ----------
 let intU, intF, intSt = { m: 'q5', p: 'lr', fx: '' };
@@ -342,7 +357,7 @@ async function integ() {
   drawMap($('m1'), o1); drawMap($('m2'), o2); $('l1').innerHTML = legendHTML(o1); $('l2').innerHTML = legendHTML(o2);
   let n = 0, d = 0; for (const c of uni) { n += v1.get(c); d += v2.get(c) }
   $('sum-int').textContent = `${uni.size} municípios no universo${fs.length ? ' (' + flabel(fs) + ')' : ''} · ${nf0.format(n)} imóveis · ${nf0.format(d)} ha potencialmente degradados`;
-  tipTable($('tip-int'), sumBy(agg.tip, uni, TIP));
+  tipTable($('tip-int'), sumBy(agg.tip, uni, TIP), agg.uso);
   intSt.view = { uf: UF || null, universo_municipios: intU.json(), filtros_imovel: intF.json(), legenda: intSt.m, limites_fixos: intSt.m === 'fx' ? intSt.fx : null, paleta: intSt.p };
 }
 
