@@ -353,8 +353,8 @@ Promise.all(['data.json','geo.json','imoveis_simulados.json'].map(f=>fetch(f).th
  mbS=MapBuilder($('mb-sicor'),{keys:varsOf(['SICOR']),filterKeys:all,agSel:()=>$('ag-sicor').value,geoAgg:()=>BASEAGG});
  geoF=ImovelFilters($('if-geo'),()=>{geo();mbG.render()});
  mbG=MapBuilder($('mb-geo'),{keys:varsOf(['Geo']),filterKeys:all,agSel:()=>'',geoAgg:()=>geoAgg});
- $('fl-int').innerHTML=`<div class="box b1" style="max-width:900px"><div class="bh"><span class="n">1</span>Recorte de municípios<button class="clr" data-clr>Limpar</button></div><div class="chk"><label><input type="radio" name="rc-int" value="todos"> Todos</label><label><input type="radio" name="rc-int" value="sel" checked> Seleção personalizada</label></div><div data-f></div></div>`;
- intU=FilterList($('fl-int').querySelector('[data-f]'),all,integ,'Municípios que atendem a todas as condições:');intU.set([{v:'vbp',ag:'caprinos_e_ovinos',op:'>',x:50}]);intSt.rc='sel';
+ $('fl-int').innerHTML=`<div class="box b1" style="max-width:900px"><div class="bh"><span class="n">1</span>Recorte de municípios<button class="clr" data-clr>Limpar</button></div><div class="chk"><label><input type="radio" name="rc-int" value="todos" checked> Todos</label><label><input type="radio" name="rc-int" value="sel"> Seleção personalizada</label></div><div data-f hidden></div></div>`;
+ intU=FilterList($('fl-int').querySelector('[data-f]'),all,integ,'Municípios que atendem a todas as condições:');intU.set([{v:'vbp',ag:'',op:'>',x:null}]);intSt.rc='todos';
  $('fl-int').addEventListener('change',e=>{if(e.target.name==='rc-int'){intSt.rc=e.target.value;$('fl-int').querySelector('[data-f]').hidden=intSt.rc!=='sel';integ()}});
  $('fl-int').addEventListener('click',e=>{if(e.target.dataset.clr==null)return;intU.set([]);intSt.rc='todos';$('fl-int').querySelector('[value=todos]').checked=true;$('fl-int').querySelector('[data-f]').hidden=true;integ()});
  intF=ImovelFilters($('if-int'),integ);

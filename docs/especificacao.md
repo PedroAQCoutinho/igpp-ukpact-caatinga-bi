@@ -96,6 +96,7 @@ O BI é uma página local para:
     - **quatro cards de funil**: municípios, imóveis, área dos imóveis e área potencialmente degradada. Cada card mostra o valor final em destaque e, embaixo, "Caatinga/UF → recorte (%) → filtros (%)". **Sem card de "degradada em aptos"**, porque isso já é um filtro;
     - **um só mapa**, com alternância **Nº de imóveis | Área pot. degradada (ha)**, e a legenda logo abaixo.
   - Abaixo de 980 px, as colunas empilham e o painel deixa de ser fixo.
+- **Estado inicial (Pedro, 24/11, 20h20):** igual ao das outras abas. Recorte em **Todos**, sem condições: a Caatinga inteira, com todos os municípios.
 - **Recorte:** reduz o universo. Só os municípios do recorte são desenhados, e o mapa enquadra apenas eles. Cada condição mostra, em cinza, **quantos municípios ela elimina sozinha**. Variáveis geo usadas no recorte contam todos os imóveis do município.
 - **Abaixo das colunas:** tabela da área potencialmente degradada por tipologia (subtotais por grupo e colunas por uso) e "Copiar visão (JSON)".
 
