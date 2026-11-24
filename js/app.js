@@ -109,11 +109,12 @@ function ImovelFilters(el, onChange, { cenario = false } = {}) {
 // ---------- filtros municipais ----------
 function FilterList(el, keys, onChange, title, single) {
   let rows = [];
-  const rowHTML = (f, i) => { const v = V[f.v]; return `<div class="fr" data-i="${i}"><select data-k="v">${varOptions(keys, f.v)}</select>${v.ag ? `<select data-k="ag" aria-label="Agrupamento">${agOptions(f.ag, v.ag)}</select>` : ''}<select data-k="op">${Object.entries(OPS).map(([k, l]) => opt(k, l, k === f.op)).join('')}</select><input type="number" data-k="x" value="${f.x ?? ''}" step="any"><span class="u">${esc(v.u)}</span>${single ? '' : `<button class="x" data-rm="${i}" aria-label="Remover condição">×</button>`}</div>` };
+  const rowHTML = (f, i) => { const v = V[f.v]; return `<div class="fr" data-i="${i}"><select data-k="v">${varOptions(keys, f.v)}</select>${v.ag ? `<select data-k="ag" aria-label="Agrupamento">${agOptions(f.ag, v.ag)}</select>` : ''}<select data-k="op">${Object.entries(OPS).map(([k, l]) => opt(k, l, k === f.op)).join('')}</select><input type="number" data-k="x" value="${f.x ?? ''}" step="any"><span class="u">${esc(v.u)}</span>${single ? '' : `<button class="x" data-rm="${i}" aria-label="Remover condição">×</button>`}<span class="imp" data-imp></span></div>` };
   const draw = () => { el.innerHTML = (title ? `<div class="hint">${title}</div>` : '') + rows.map(rowHTML).join('') + (single ? '' : '<div><button class="btn add" data-add>+ Adicionar condição</button></div>') };
   const api = {
     on: !single, get: () => !api.on ? [] : rows.filter(f => f.x !== '' && f.x != null && isFinite(f.x)),
-    set(r) { rows = r; draw() }, json: () => api.get().map(f => ({ variavel: f.v, agrupamento: f.ag || null, op: f.op, valor: f.x, unidade: V[f.v].u }))
+    set(r) { rows = r; draw() }, rows: () => rows, remove(i) { rows.splice(i, 1); draw(); onChange() },
+    impact(fn) { el.querySelectorAll('[data-i]').forEach(d => { const f = rows[+d.dataset.i], t = d.querySelector('[data-imp]'); if (t) t.textContent = f && f.x != null && f.x !== '' && isFinite(f.x) ? fn(f) : '' }) }, json: () => api.get().map(f => ({ variavel: f.v, agrupamento: f.ag || null, op: f.op, valor: f.x, unidade: V[f.v].u }))
   };
   el.addEventListener('click', e => { if (e.target.dataset.add != null) { rows.push({ v: keys[0], ag: '', op: '>', x: null }); draw() } else if (e.target.dataset.rm != null) { rows.splice(+e.target.dataset.rm, 1); draw(); onChange() } });
   el.addEventListener('change', e => {
@@ -346,19 +347,37 @@ function usoBlock(t, uso) { // quadro de uso da terra
   }).join('');
 }
 // ---------- aba 4 ----------
-let intU, intF, intSt = { m: 'q5', p: 'lr', fx: '' };
+let intU, intF, intSt = { m: 'q5', p: 'lr', fx: '', mv: 'n' };
 async function integ() {
   if (!status.imoveis) return;
   const cods = universe(), fs = intSt.rc === 'sel' ? intU.get() : [], uni = new Set(cods.filter(c => passes(c, fs))), fi = intF.get();
+  // funil: sem filtros de imóvel (mesmos usos) → recorte → filtros
+  const semF = { tip: new Set(TIP.keys()), ar: new Set(AR.keys()), rf: new Set(RF.keys()), uso: fi.uso, degmin: null, apt: 't', cen: fi.cen };
+  const a0 = await aggAll(semF); if (a0 === undefined) return;
   const agg = await aggAll(fi); if (agg === undefined) return;
-  const v1 = new Map(), v2 = new Map(); for (const c of uni) { const o = agg.by.get(c); v1.set(c, o ? o.n : 0); v2.set(c, o ? o.deg : 0) }
-  const mk = (vals, unit, title) => { const b = breaksFor([...vals.values()], intSt.m, intSt.fx); return { cods, inSet: uni, showOut: false, vals, breaks: b, colors: ramp(intSt.p, b.length + 1), hatch: null, unit, title } };
-  const o1 = mk(v1, 'n', 'Imóveis'), o2 = mk(v2, 'ha', 'Área pot. degradada');
-  drawMap($('m1'), o1); drawMap($('m2'), o2); $('l1').innerHTML = legendHTML(o1); $('l2').innerHTML = legendHTML(o2);
-  let n = 0, d = 0; for (const c of uni) { n += v1.get(c); d += v2.get(c) }
-  $('sum-int').textContent = `${uni.size} municípios no universo${fs.length ? ' (' + flabel(fs) + ')' : ''} · ${nf0.format(n)} imóveis · ${nf0.format(d)} ha potencialmente degradados`;
+  const sum = (a, set) => { let n = 0, area = 0, deg = 0, m = 0; for (const [c, o] of a.by) if (set.has(c)) { n += o.n; area += o.area; deg += o.deg; if (o.n > 0) m++ } return { n, area, deg, m } };
+  const s0 = sum(a0, new Set(cods)), s1 = sum(a0, uni), s2 = sum(agg, uni); s0.m = cods.length; s1.m = uni.size;
+  const sh = (a, b) => b ? ` <em>(${nf.format(100 * a / b)}%)</em>` : '';
+  const card = (l, k, u) => `<div class="kc"><span class="l">${l}</span><b>${nf0.format(s2[k])}${u}</b><div class="f">${UF || 'Caatinga'} ${nf0.format(s0[k])} → recorte ${nf0.format(s1[k])}${sh(s1[k], s0[k])} → filtros ${nf0.format(s2[k])}${sh(s2[k], s0[k])}</div></div>`;
+  $('k-int').innerHTML = card('Municípios', 'm', '') + card('Imóveis', 'n', '') + card('Área dos imóveis', 'area', ' ha') + card('Área pot. degradada', 'deg', ' ha');
+  // impacto de cada condição do recorte (quantos municípios ela elimina sozinha)
+  intU.impact(f => { const k = cods.filter(c => !passes(c, [f])).length; return `elimina ${nf0.format(k)}` });
+  // etiquetas das condições ativas
+  const ch = [];
+  if (intSt.rc === 'sel') intU.rows().forEach((f, i) => { if (f.x != null && f.x !== '' && isFinite(f.x)) ch.push(`<span class="chip">${esc(flabel([f]))}<button data-rmf="${i}" aria-label="Remover">×</button></span>`) });
+  const off = (set, n, labs, name) => set.size < n ? `<span class="chip" style="--bc:#c4761a">${name}: ${[...set].sort().map(i => labs[i]).join(', ') || 'nenhum'}</span>` : '';
+  ch.push(off(fi.tip, 8, TIP, 'Tipologias'), off(fi.ar, 6, AR, 'Aridez'), off(fi.rf, 5, RFL.map(r => r[0]), 'Risco'));
+  ch.push(`<span class="chip" style="--bc:#c4761a">Degradada = ${[...fi.uso].sort().map(i => USOS[i][0].toLowerCase()).join(' + ') || 'nenhum uso'}</span>`);
+  if (fi.degmin != null) ch.push(`<span class="chip" style="--bc:#c4761a">Degradada ≥ ${fmt(fi.degmin)} ha</span>`);
+  if (fi.apt !== 't') ch.push(`<span class="chip" style="--bc:#c4761a">${fi.apt === 's' ? 'Só aptos' : 'Só não aptos'}</span>`);
+  $('chips-int').innerHTML = ch.join('');
+  // mapa único com alternância
+  const vals = new Map(); for (const c of uni) { const o = agg.by.get(c); vals.set(c, o ? (intSt.mv === 'n' ? o.n : o.deg) : 0) }
+  const b = breaksFor([...vals.values()], intSt.m, intSt.fx), unit = intSt.mv === 'n' ? 'n' : 'ha', title = intSt.mv === 'n' ? 'Imóveis' : 'Área pot. degradada';
+  const o = { cods, inSet: uni, showOut: false, vals, breaks: b, colors: ramp(intSt.p, b.length + 1), hatch: null, unit, title };
+  drawMap($('m1'), o); $('l1').innerHTML = legendHTML(o);
   tipTable($('tip-int'), sumBy(agg.tip, uni, TIP), agg.uso);
-  intSt.view = { uf: UF || null, universo_municipios: intU.json(), filtros_imovel: intF.json(), legenda: intSt.m, limites_fixos: intSt.m === 'fx' ? intSt.fx : null, paleta: intSt.p };
+  intSt.view = { uf: UF || null, universo_municipios: intU.json(), filtros_imovel: intF.json(), mapa: intSt.mv, legenda: intSt.m, limites_fixos: intSt.m === 'fx' ? intSt.fx : null, paleta: intSt.p };
 }
 
 // ---------- inicialização ----------
@@ -399,12 +418,15 @@ async function main() {
   $('fl-int').addEventListener('change', e => { if (e.target.name === 'rc-int') { intSt.rc = e.target.value; $('fl-int').querySelector('[data-f]').hidden = intSt.rc !== 'sel'; integ() } });
   $('fl-int').addEventListener('click', e => { if (e.target.dataset.clr == null) return; intU.set([]); intSt.rc = 'todos'; $('fl-int').querySelector('[value=todos]').checked = true; $('fl-int').querySelector('[data-f]').hidden = true; integ() });
   intF = ImovelFilters($('if-int'), integ);
-  $('ctl-int').innerHTML = `<div class="box b3" style="max-width:640px"><div class="bh"><span class="n">3</span>Legenda dos dois mapas<button class="clr" data-clr>Limpar</button></div><div class="fr">${legendCtl()}</div></div>`;
+  $('ctl-int').innerHTML = `<div class="box b3" style="max-width:640px"><div class="bh"><span class="n">3</span>Legenda do mapa<button class="clr" data-clr>Limpar</button></div><div class="fr">${legendCtl()}</div></div>`;
   $('ctl-int').addEventListener('change', e => { const k = e.target.dataset.k; if (k) { intSt[k] = e.target.value; $('ctl-int').querySelector('[data-fx]').hidden = intSt.m !== 'fx'; integ() } });
   $('ctl-int').addEventListener('input', e => { if (e.target.dataset.k === 'fx') { intSt.fx = e.target.value; integ() } });
   $('ctl-int').addEventListener('click', e => { if (e.target.dataset.clr == null) return; Object.assign(intSt, { m: 'q5', p: 'lr', fx: '' }); const c = $('ctl-int'); c.querySelector('[data-k=m]').value = 'q5'; c.querySelector('[data-k=p]').value = 'lr'; c.querySelector('[data-k=fx]').value = ''; c.querySelector('[data-fx]').hidden = true; integ() });
   $('cp-int').onclick = () => { const t = JSON.stringify(intSt.view, null, 1); $('vj-int').hidden = false; $('vj-int').textContent = t; navigator.clipboard?.writeText(t).catch(() => { }) };
   new ResizeObserver(() => { if ($('m1').offsetParent) integ() }).observe($('m1'));
+  document.querySelector('#p-int .seg').addEventListener('click', e => { const v = e.target.dataset.mv; if (!v) return; intSt.mv = v; document.querySelectorAll('#p-int .seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mv === v)); integ() });
+  $('chips-int').addEventListener('click', e => { const i = e.target.dataset.rmf; if (i != null) intU.remove(+i) });
+  const setBar = () => document.documentElement.style.setProperty('--barh', document.querySelector('.bar').offsetHeight + 'px'); setBar(); new ResizeObserver(setBar).observe(document.querySelector('.bar'));
   $('ag-ibge').onchange = () => { ibge(); mbI.render() }; $('ag-sicor').onchange = () => { sicor(); mbS.render() };
   $('uf').onchange = () => { UF = $('uf').value; renderAll() };
   document.querySelectorAll('[role=tab]').forEach(b => b.addEventListener('click', () => {
