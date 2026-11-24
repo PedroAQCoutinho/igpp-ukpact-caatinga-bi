@@ -106,7 +106,7 @@ O BI é uma página local para:
 | `aridez` | `classe` (A–F; nulo vira `'Sem classe'`) |
 | `risco_fund` | `carac_fund` (MUITO_BAIXO … ALTO) |
 | `agri_deg_ha`, `agri_ndeg_ha`, `past_deg_ha`, `past_ndeg_ha`, `mos_deg_ha`, `mos_ndeg_ha`, `vn_deg_ha`, `vn_ndeg_ha` | Colunas `*_degradad*_ha` da tabela de salvaguardas |
-| `area_pot_degradada_ha` | **A definição precisa ser confirmada por Pedro antes da extração.** Proposta: agricultura + pastagem degradadas, como em `sql/analises/histogramas_salvaguardas.sql`. Mantenha os componentes para permitir recalcular |
+| `area_pot_degradada_ha` | **Definição de Pedro (24/11/2026):** `agricultura_degradada_ha + pastagem_degradada_ha`, nulos como zero, como em `sql/analises/histogramas_salvaguardas.sql`. Os componentes ficam no arquivo para permitir recalcular |
 | `apto_status`, `apto_desm_2023`, `apto_desm_2008`, `apto_embargo`, `apto_fpnd`, `apto_uc`, `apto_uc_semucus`, `apto_ti_tq`, `apto_areas_degradadas`, `apto_todos`, `apto_todos_semucus` | Booleanos `apto_*` |
 
 **Conferência obrigatória.** Compare com o Relatório 2. Se não bater, **pare e mostre a diferença** em vez de ajustar a query.
@@ -161,7 +161,7 @@ Se o tempo apertar, **corte nesta ordem**: mapa do bioma, Jenks, cenário UCUS, 
 
 ## 8. Pendências que não dependem do código
 
-- Definição de "área potencialmente degradada" para o BI (seção 4.2).
+- ~~Definição de "área potencialmente degradada" para o BI (seção 4.2).~~ Decidida por Pedro em 24/11/2026: agricultura + pastagem degradadas.
 - Com o Felipe:
   - os valores são soma ou média de 2019–2024?
   - o que significa "AEH"?
