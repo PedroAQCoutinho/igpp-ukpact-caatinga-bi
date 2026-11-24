@@ -6,7 +6,6 @@
 		{$BI_USER} {$BI_HASH}
 	}
 	root * /srv/bi-caatinga
-	encode zstd gzip
 	# Bibliotecas versionadas por pasta/arquivo: cache de 30 dias
 	@vendor path /vendor/*
 	header @vendor Cache-Control "private, max-age=2592000, immutable"
@@ -25,7 +24,11 @@
 		X-Content-Type-Options nosniff
 		Referrer-Policy no-referrer
 		X-Frame-Options DENY
+		X-Robots-Tag "noindex, nofollow"
 		-Server
 	}
-	file_server
+	# Arquivos .gz gerados no envio (publicar_vm.sh): nada é comprimido na hora (VM pequena)
+	file_server {
+		precompressed gzip
+	}
 }
