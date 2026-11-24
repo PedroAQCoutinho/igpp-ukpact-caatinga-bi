@@ -64,13 +64,17 @@ O BI é uma página local para:
   - salvaguardas: todos, só aptos ou só não aptos;
   - botão "Limpar filtros de imóvel".
 
-**Aba 4, Geo + socioeconomia (fluxo fixo):**
+**Aba 4, Geo + socioeconomia (layout revisto por Pedro em 24/11, 17h50):**
 
-1. **Recorte de municípios** (Todos ou personalizado). Ele **reduz o universo**: só os municípios do recorte são desenhados, e o mapa enquadra apenas eles. Variáveis geo usadas no recorte contam todos os imóveis do município.
-2. **Filtros de imóvel**, que definem o que é contado.
-3. **Dois mapas** com legenda e paleta compartilhadas: nº de imóveis à esquerda e área potencialmente degradada (ha) à direita.
-4. **Tabela** da área potencialmente degradada por tipologia, com subtotais por grupo e o total da seleção.
-5. "Copiar visão (JSON)".
+- **Duas colunas:**
+  - **Esquerda, com rolagem:** passos (1) recorte de municípios, Todos ou personalizado; (2) filtros de imóvel; (3) legenda.
+  - **Direita, painel fixo** (`position: sticky`, abaixo da barra de abas), que atualiza a cada mudança:
+    - **etiquetas** das condições ativas; as condições do recorte têm "×" para remover;
+    - **quatro cards de funil**: municípios, imóveis, área dos imóveis e área potencialmente degradada. Cada card mostra o valor final em destaque e, embaixo, "Caatinga/UF → recorte (%) → filtros (%)". **Sem card de "degradada em aptos"**, porque isso já é um filtro;
+    - **um só mapa**, com alternância **Nº de imóveis | Área pot. degradada (ha)**, e a legenda logo abaixo.
+  - Abaixo de 980 px, as colunas empilham e o painel deixa de ser fixo.
+- **Recorte:** reduz o universo. Só os municípios do recorte são desenhados, e o mapa enquadra apenas eles. Cada condição mostra, em cinza, **quantos municípios ela elimina sozinha**. Variáveis geo usadas no recorte contam todos os imóveis do município.
+- **Abaixo das colunas:** tabela da área potencialmente degradada por tipologia (subtotais por grupo e colunas por uso) e "Copiar visão (JSON)".
 
 ## 3. Arquitetura
 
