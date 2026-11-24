@@ -169,10 +169,14 @@ Se o tempo apertar, **corte nesta ordem**: mapa do bioma, Jenks, cenário UCUS, 
   - pedir a base anual para a série temporal.
 - Distribuição de `data/local/imoveis.parquet` aos colegas, por exemplo pelo Drive. Hoje o BI completo roda só na máquina de Pedro.
 
-## 9. Publicação na VM Oracle (depois da reunião de 25/11)
+## 9. Publicação na VM Oracle
 
-**Decisão de Pedro (24/11/2026):** publicar o BI na VM Oracle pessoal, com senha, para a equipe acessar pelo navegador sem instalar nada. A mistura entre pessoal e profissional é intencional nesta fase. Só comece **depois** que Pedro aprovar o BI rodando localmente.
+**Decisão de Pedro (24/11/2026):** publicar o BI na VM Oracle pessoal, com senha, para a equipe acessar pelo navegador sem instalar nada. A mistura entre pessoal e profissional é intencional nesta fase. **Atualização de 24/11, 16h:** Pedro pediu para publicar já nesta rodada. A publicação começa logo depois das abas 3 e 4 com dados reais e da conferência de totais aprovada. Pare só para Pedro digitar a senha na VM.
 
+- **Domínio provisório:** o endereço `bi.147-15-67-178.sslip.io` é temporário. Pedro vai apontar um DNS próprio depois.
+  - O nome do host fica num só lugar: variável `BI_HOST` no `scripts/publicar_vm.sh` e no bloco do Caddy.
+  - O BI não pode ter URL absoluta no código; use só caminhos relativos.
+  - Documente em `meu-contexto/infra/vm-oracle.md` como trocar: registro A do DNS → IP da VM, trocar `BI_HOST`, recarregar o Caddy (o certificado HTTPS sai sozinho) e testar.
 - **Onde:** `https://bi.147-15-67-178.sslip.io`, servido pelo **mesmo Caddy** do agentes.chat, com override no mesmo padrão do Radar de Leilões (`meu-contexto/pessoal/radar/leiloes/README.md` e `infra/vm-oracle.md`).
   - Não suba container novo: a VM tem 1 GB de RAM. O site é estático; o processamento acontece no navegador de cada usuário.
   - Antes de mexer, leia o override atual e mantenha o site do Radar e o agentes.chat funcionando. Reinicie só o container `caddy` e confira que os três sites respondem.
