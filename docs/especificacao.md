@@ -376,3 +376,9 @@ O protótipo foi atualizado (v10). Mudanças na aba 3:
   - opcional: área irrigada municipal do Atlas 2021.
 - **Pendências de Pedro:** a camada aparece em todos os mapas ou só na aba 4; inclui ou não a área irrigada; qual a parte mínima de área para o cruzamento contorno × município.
 - Não confundir com os polos reconhecidos pelo MIDR (Política Nacional de Irrigação), que são outra lista.
+
+## 18. Linhas fixas de UF (pedido de Pedro, 25/11/2026)
+
+- Todos os mapas mostram as divisas entre UFs como linha contínua fina (`path.ufl`), sobre os municípios e abaixo dos pontos. As linhas não dependem do recorte nem dos filtros, e a legenda traz "limite de UF".
+- **Hoje** as divisas são derivadas no navegador (`limitesUF()`) das bordas compartilhadas entre municípios de UFs diferentes na malha. Cobrem todas as divisas dentro da malha: PI-CE, PI-PE, PI-BA, CE-RN, CE-PB, CE-PE, RN-PB, PB-PE, PE-AL, PE-BA, AL-SE, AL-BA, SE-BA e BA-MG.
+- **Melhoria opcional:** rodar `scripts/preparar_malha.py` com `BR_UF_2022.zip` do IBGE no mesmo diretório. A malha passa a ter `uf` com as divisas completas (`-innerlines`, recortadas na caixa do bioma + 1°), inclusive fora da malha municipal, e o BI usa essa camada automaticamente.

@@ -25,7 +25,7 @@ const PAL = { lr: ['Laranja → roxo', ['#fde0b6', '#f6a75f', '#d9744a', '#a3568
 const METH = { q4: 'Quartis', q5: 'Quintis', q10: 'Decis', eq: 'Intervalos iguais (5)', jk: 'Quebras naturais (5)', fx: 'Limites fixos' };
 const OPS = { '>': '>', '>=': '≥', '<': '<', '<=': '≤' };
 
-let R = [], RM = new Map(), UF = '', UFS = [], POLY = {}, AREA = new Map(), BIOMA = [], BASEAGG = { by: new Map() };
+let R = [], RM = new Map(), UF = '', UFS = [], POLY = {}, AREA = new Map(), BIOMA = [], UFL = [], BASEAGG = { by: new Map() };
 // Arranjos citados nas entrevistas (seção 12.1): só os pontos com local; liga/desliga único para todos os mapas
 let PTS = [], PTS_ON = false;
 const PCL = { A: '#1a7f3c', B: '#2f6fb0', C: '#c4761a', D: '#7a5a8c' }, PRL = { municipio: 'município citado', municipio_inferido: 'município inferido (conferir)', regiao_aprox: 'região aproximada' };
@@ -209,6 +209,16 @@ function zoomable(box, W, H, pid, C) {
   const end = () => { drag = null; box.classList.remove('panning') }; svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
   apply();
 }
+// Limites entre UFs a partir da topologia compartilhada da malha (mapshaper preserva os vértices comuns).
+// Cobre as divisas dentro da malha; onde a divisa coincide com a borda externa da malha não há linha.
+function limitesUF() {
+  const seg = new Map();
+  for (const [c, rs] of Object.entries(POLY)) for (const r of rs) for (let i = 0; i < r.length - 1; i++) {
+    const a = r[i], b = r[i + 1], ka = a.join(), kb = b.join(), k = ka < kb ? ka + '|' + kb : kb + '|' + ka;
+    const e = seg.get(k); if (e) e.u.add(c.slice(0, 2)); else seg.set(k, { a, b, u: new Set([c.slice(0, 2)]) });
+  }
+  return [...seg.values()].filter(e => e.u.size > 1).map(e => [e.a, e.b]);
+}
 function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors, hatch:Set, unit, title}
   const W = box.clientWidth, H = box.clientHeight; if (!W) return;
   const drawn = o.showOut ? o.cods : o.cods.filter(c => o.inSet.has(c));
@@ -229,6 +239,7 @@ function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors,
     g += `<path class="m" data-c="${c}" d="${path(c)}" fill="${fill}" fill-rule="evenodd"/>`;
   }
   if (o.hatch) for (const c of drawn) if (o.hatch.has(c) && o.inSet.has(c)) g += `<path d="${path(c)}" fill="url(#${id})" fill-rule="evenodd" pointer-events="none"/>`;
+  if (UFL.length) g += `<path class="ufl" d="${UFL.map(l => 'M' + l.map(P).join('L')).join('')}" pointer-events="none"/>`;
   if (BIOMA.length) g += `<path class="bioma" d="${ringsPath(BIOMA)}" pointer-events="none"/>`;
   if (PTS_ON) { // pontos nos municípios desenhados (na aba 4, só os do recorte); vários no mesmo município ficam lado a lado
     const dset = new Set(drawn), grp = {};
@@ -259,7 +270,7 @@ function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors,
   box.querySelector('svg').onmouseleave = () => tip.hidden = true;
 }
 const ptsLeg = () => PTS_ON ? `<div style="margin-top:4px"><b>Arranjos citados nas entrevistas</b></div>` + Object.entries(PCL).map(([k, c]) => `<div><i style="background:${c};border-radius:50%;width:13px"></i>classe ${k}</div>`).join('') + `<div><i style="background:var(--bg);border:2.5px solid var(--mut);border-radius:50%;width:13px"></i>ponto em região aproximada</div>` : '';
-const biomaLeg = () => (BIOMA.length ? `<div><i style="background:none;border:0;border-top:2px dashed var(--mut);height:0"></i>limite do bioma Caatinga (IBGE 2019)</div>` : '') + ptsLeg();
+const biomaLeg = () => (UFL.length ? `<div><i style="background:none;border:0;border-top:1.5px solid var(--ink);opacity:.6;height:0"></i>limite de UF</div>` : '') + (BIOMA.length ? `<div><i style="background:none;border:0;border-top:2px dashed var(--mut);height:0"></i>limite do bioma Caatinga (IBGE 2019)</div>` : '') + ptsLeg();
 function legendHTML(o) {
   if (o.blank) { const k = o.cods.filter(c => o.inSet.has(c)).length; return `<b>${esc(o.title)}</b><div><i style="background:var(--blank)"></i>no recorte <span class="u">(${k})</span></div>` + (o.cods.length > k ? `<div><i style="background:var(--out)"></i>fora do recorte <span class="u">(${o.cods.length - k})</span></div>` : '') + biomaLeg() }
   const n = o.breaks.length + 1, cnt = Array(n).fill(0); let nd = 0, z = 0, out = 0;
@@ -563,6 +574,7 @@ async function main() {
   const g = await (await fetch(dataUrl('data/malha_municipios.json'))).json();
   for (const [c, o] of Object.entries(g.mun)) { POLY[c] = o.r; AREA.set(c, o.a) }
   BIOMA = g.bioma || [];
+  UFL = g.uf || limitesUF(); // linhas fixas de UF: da malha (g.uf) ou derivadas das bordas compartilhadas entre municípios de UFs diferentes
   for (const r of R) RM.set(r.codmun, r);
   // Agregação "todos os imóveis" em cache (recortes com variáveis geo e variáveis geo nas abas 1 e 2)
   if (status.pontos) PTS = await q(`SELECT id, organizacao AS org, classe, cadeia, local_citado AS local, precisao AS prec, codmun, municipio AS mun, uf, lat::DOUBLE AS lat, lon::DOUBLE AS lon

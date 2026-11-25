@@ -4,8 +4,10 @@
 Entradas (baixadas do IBGE, fora do repo; caminho em --dir):
   BR_Municipios_2022.zip  geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2022/Brasil/BR/
   Biomas_250mil.zip       geoftp.ibge.gov.br/informacoes_ambientais/estudos_ambientais/biomas/vetores/  (biomas IBGE 2019, 1:250 mil)
+  BR_UF_2022.zip          (opcional) mesmo diretório do BR_Municipios_2022.zip; divisas entre UFs completas, além da malha
 Saída: data/malha_municipios.json
-  {"fonte":..., "mun": {codmun: {"a": area_km2_IBGE, "r": [anéis lon/lat]}}, "bioma": [anéis]}
+  {"fonte":..., "mun": {codmun: {"a": area_km2_IBGE, "r": [anéis lon/lat]}}, "bioma": [anéis], "uf": [linhas]}
+  Sem BR_UF_2022.zip, "uf" fica de fora e o BI deriva as divisas das bordas compartilhadas entre municípios.
 Requer mapshaper no PATH (simplificação com topologia compartilhada preservada).
 Uso: python3 scripts/preparar_malha.py --dir /caminho/dos/zips [--pct 4%]
 """
@@ -30,6 +32,14 @@ def rings(geom):
     return [[[round(x, 4), round(y, 4)] for x, y in ring] for p in polys for ring in p]
 
 
+def linhas(geom):
+    """Lista de linhas de LineString/MultiLineString."""
+    if geom is None:
+        return []
+    ls = [geom["coordinates"]] if geom["type"] == "LineString" else geom["coordinates"]
+    return [[[round(x, 4), round(y, 4)] for x, y in l] for l in ls]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", required=True)
@@ -51,6 +61,19 @@ def main():
         subprocess.run(["mapshaper", "-i", str(bio_shp), "encoding=utf8", "-filter", "Bioma == 'Caatinga'",
                         "-simplify", "1%", "keep-shapes", "planar",
                         "-o", str(td / "bio.json"), "format=geojson", "precision=0.0001"], check=True)
+        uf_zip = src / "BR_UF_2022.zip"
+        uf = None
+        if uf_zip.exists():
+            # Divisas entre UFs (sem litoral), recortadas na caixa do bioma com folga de 1 grau
+            zipfile.ZipFile(uf_zip).extractall(td / "uf")
+            uf_shp = next((td / "uf").glob("*.shp"))
+            pts = [p for f in json.loads((td / "bio.json").read_text())["features"] for r in rings(f["geometry"]) for p in r]
+            xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+            bbox = ",".join(str(v) for v in (min(xs) - 1, min(ys) - 1, max(xs) + 1, max(ys) + 1))
+            subprocess.run(["mapshaper", "-i", str(uf_shp), "encoding=utf8", "-clip", f"bbox={bbox}",
+                            "-simplify", a.pct, "keep-shapes", "planar", "-innerlines",
+                            "-o", str(td / "uf.json"), "format=geojson", "precision=0.0001"], check=True)
+            uf = json.loads((td / "uf.json").read_text())
         mun = json.loads((td / "mun.json").read_text())
         bio = json.loads((td / "bio.json").read_text())
     out = {}
@@ -66,10 +89,13 @@ def main():
             "bioma": "IBGE, Biomas do Brasil 1:250.000 (2019), feição Caatinga",
             "simplificacao": f"mapshaper -simplify {a.pct} keep-shapes planar (topologia compartilhada preservada)",
             "municipios_base_sem_malha": faltam,
+            "uf": "IBGE, BR_UF_2022, divisas internas (mapshaper -innerlines)" if uf else "derivadas no BI das bordas compartilhadas da malha municipal",
         },
         "mun": out,
         "bioma": [r for f in bio["features"] for r in rings(f["geometry"])],
     }
+    if uf:
+        res["uf"] = [l for f in uf["features"] for l in linhas(f["geometry"])]
     SAIDA.write_text(json.dumps(res, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"{len(out)} municípios na malha; sem malha: {faltam or 'nenhum'}; {SAIDA.stat().st_size/1e6:.2f} MB")
 
