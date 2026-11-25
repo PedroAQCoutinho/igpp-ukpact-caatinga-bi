@@ -219,6 +219,22 @@
     "como": "sem nova extração: agri_deg_ha + past_deg_ha + mos_deg_ha do próprio arquivo (componentes já arredondados a 0,1 ha), resultado arredondado a 0,1 ha",
     "nota": "a SQL em extract/01_imoveis.sql foi atualizada para a nova definição e ainda não rodou nessa forma; sha256_sql acima é a da extração de 2026-11-24T16:03:53-03:00"
    }
+  },
+  "apl_municipio": {
+   "origem": "Observatório Brasileiro de APLs (MDIC), Lista APLs_outubro2022_publico.xlsx",
+   "url": "https://www.gov.br/empresas-e-negocios/pt-br/observatorioapl/apls-brasileiros/apls.xlsx/@@download/file/Lista%20APLs_outubro2022_publico.xlsx",
+   "arquivo_local": "data/raw/Lista APLs_outubro2022_publico.xlsx (fora do git: contém contatos dos gestores)",
+   "sha256_origem": "32010195166d4f9ef875e8a5efd6f0646592bf91d8f610cbf78708caea560a6a",
+   "script": "scripts/preparar_apl.py",
+   "gerado_em": "2026-11-25T09:14:20-03:00",
+   "saida": "data/apl_municipio.parquet",
+   "apls_planilha": 397,
+   "apls_na_base": 142,
+   "municipios_com_apl": 607,
+   "pares_municipio_apl": 870,
+   "regra": "nomes da coluna 'Municípios que compõem o APL*' casados com a base por UF + nome sem acento; grafias corrigidas em ALIAS",
+   "nao_casados_nas_ufs_da_base": 467,
+   "setor_grupo": "11 grupos aprovados por Pedro em 25/11/2026 (GRUPOS no script); 'Pecuária' genérica em bovinocultura"
   }
  }
 }

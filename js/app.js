@@ -69,6 +69,18 @@ const V = {
   eleg: { l: 'Área degradada em imóveis elegíveis', u: 'ha', g: 'Geo', ext: 1, geo: 1, f: (r, a, g) => g?.elig ?? null },
   aptp: { l: 'Imóveis elegíveis (todas as salvaguardas)', u: '%', g: 'Geo', geo: 1, f: (r, a, g) => g ? rat(g.apt, g.n) : null },
 };
+// APLs (seção 12.2): variáveis municipais para recorte e hachura (não entram na escolha da variável do mapa)
+const APLG = [['bovinocultura', 'Bovinocultura e pecuária', '#8c4a2f'], ['caprinovinocultura', 'Caprinovinocultura', '#d17a3a'], ['agricultura', 'Agricultura e agropecuária', '#4f6b55'],
+  ['fruticultura', 'Fruticultura', '#b84a6b'], ['apicultura', 'Apicultura', '#c9a227'], ['avicultura', 'Avicultura', '#e39a6f'], ['pesca', 'Pesca e aquicultura', '#2f6fb0'],
+  ['textil', 'Têxtil, confecção e artesanato', '#6f5ba7'], ['mineral', 'Mineral e cerâmica', '#7a7f7c'], ['turismo', 'Turismo', '#3d9e8c'], ['outros', 'Outros (indústria e serviços)', '#b0b6b2']];
+let APL = [], APLM = new Map(); // APLM: codmun → linhas de apl_municipio
+const aplOf = c => APLM.get(c) || [];
+const APLV = {
+  tem_apl: { l: 'Tem APL (Observatório 2022)', u: '1 = sim', g: 'APL', f: r => APL.length ? (aplOf(r.codmun).length ? 1 : 0) : null },
+  n_apls: { l: 'Nº de APLs no município', u: 'n', g: 'APL', f: r => APL.length ? aplOf(r.codmun).length : null },
+  ...Object.fromEntries(APLG.map(([k, l]) => ['tem_apl_setor_' + k, { l: 'Tem APL — ' + l.toLowerCase(), u: '1 = sim', g: 'APL', f: r => APL.length ? (aplOf(r.codmun).some(a => a.setor_grupo === k) ? 1 : 0) : null }])),
+};
+Object.assign(V, APLV);
 // Nº de aptos por critério (seção 5, aba 3)
 for (const [c, l] of CRIT) V['n_' + c] = { l: 'Imóveis aptos — ' + l, u: 'n', g: 'Geo', ext: 1, geo: 1, f: (r, a, g) => g ? g[c] ?? null : null };
 const varsOf = gs => Object.keys(V).filter(k => gs.includes(V[k].g));
@@ -177,7 +189,7 @@ function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors,
   let g = `<defs><pattern id="${id}" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" style="stroke:var(--ink);stroke-width:1.3"/></pattern></defs>`;
   for (const c of drawn) {
     const inn = o.inSet.has(c), x = o.vals.get(c);
-    const fill = !inn ? 'var(--out)' : o.blank ? 'var(--blank)' : x == null ? 'var(--nd)' : x === 0 ? 'var(--zero)' : o.colors[clsOf(x, o.breaks)];
+    const fill = !inn ? 'var(--out)' : o.cat ? (o.cat.get(c) || 'var(--zero)') : o.blank ? 'var(--blank)' : x == null ? 'var(--nd)' : x === 0 ? 'var(--zero)' : o.colors[clsOf(x, o.breaks)];
     g += `<path class="m" data-c="${c}" d="${path(c)}" fill="${fill}" fill-rule="evenodd"/>`;
   }
   if (o.hatch) for (const c of drawn) if (o.hatch.has(c) && o.inSet.has(c)) g += `<path d="${path(c)}" fill="url(#${id})" fill-rule="evenodd" pointer-events="none"/>`;
@@ -200,6 +212,7 @@ function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors,
       let lx = e.clientX - b.left + 12; if (lx > W - tip.offsetWidth - 4) lx = Math.max(4, e.clientX - b.left - tip.offsetWidth - 12); tip.style.left = lx + 'px'; tip.style.top = (e.clientY - b.top + 12) + 'px'; return
     }
     const c = e.target.dataset?.c; if (!c) { tip.hidden = true; return } const r = RM.get(c), x = o.vals.get(c), b = box.getBoundingClientRect();
+    if (o.cat) { tip.textContent = `${r.municipio} (${r.uf}): ${o.vals.get(c) || 'sem APL'}`; tip.hidden = false; let lx = e.clientX - b.left + 12; if (lx > W - tip.offsetWidth - 4) lx = Math.max(4, e.clientX - b.left - tip.offsetWidth - 12); tip.style.left = lx + 'px'; tip.style.top = (e.clientY - b.top + 12) + 'px'; return }
     tip.textContent = `${r.municipio} (${r.uf})${o.blank ? (o.inSet.has(c) ? '' : ' · fora do recorte') : ': ' + (o.inSet.has(c) ? (x == null ? 'sem dado' : fmt(x) + ' ' + o.unit) : 'fora do recorte')}${o.hatch && o.hatch.has(c) ? ' · hachura' : ''}`; tip.hidden = false;
     let lx = e.clientX - b.left + 12; if (lx > W - tip.offsetWidth - 4) lx = e.clientX - b.left - tip.offsetWidth - 12; tip.style.left = lx + 'px'; tip.style.top = (e.clientY - b.top + 12) + 'px'
   };
@@ -457,12 +470,34 @@ async function integ() {
   intSt.view = { uf: UF || null, universo_municipios: intU.json(), filtros_imovel: intF.json(), mapa: intSt.mv, legenda: intSt.m, limites_fixos: intSt.m === 'fx' ? intSt.fx : null, paleta: intSt.p };
 }
 
+// Arranjos já existentes (APLs): mapa categórico estático por grupo de setor e lista (aba 4; segue só a UF do topo)
+const APL_MULT = '#3b2a6e';
+function apls() {
+  if (!APL.length) { $('apl-int').innerHTML = '<p class="hint">Falta data/apl_municipio.parquet (scripts/preparar_apl.py).</p>'; return }
+  const cods = universe(), cs = new Set(cods), cat = new Map(), lab = new Map(), cnt = new Map(), GC = Object.fromEntries(APLG.map(([k, l, c]) => [k, [l, c]]));
+  for (const c of cods) {
+    const g = [...new Set(aplOf(c).map(a => a.setor_grupo))]; if (!g.length) continue;
+    const k = g.length > 1 ? 'mult' : g[0]; cat.set(c, k === 'mult' ? APL_MULT : GC[k][1]); cnt.set(k, (cnt.get(k) || 0) + 1);
+    lab.set(c, aplOf(c).map(a => `${a.nome_apl} (${GC[a.setor_grupo][0].toLowerCase()})`).join('; '));
+  }
+  const o = { cods, inSet: cs, showOut: false, vals: lab, cat, breaks: [], colors: [], title: 'APLs por setor' };
+  drawMap($('m-apl'), o);
+  const sem = cods.length - cat.size;
+  $('l-apl').innerHTML = `<b>Municípios por setor do APL</b>` + APLG.filter(([k]) => cnt.get(k)).sort((a, b) => cnt.get(b[0]) - cnt.get(a[0])).map(([k, l, c]) => `<div><i style="background:${c}"></i>${l} <span class="u">(${cnt.get(k)})</span></div>`).join('') +
+    (cnt.get('mult') ? `<div><i style="background:${APL_MULT}"></i>dois ou mais setores <span class="u">(${cnt.get('mult')})</span></div>` : '') + `<div><i style="background:var(--zero)"></i>sem APL <span class="u">(${sem})</span></div>` + biomaLeg();
+  const by = new Map(); for (const a of APL) if (cs.has(a.codmun)) { let x = by.get(a.apl_id); if (!x) by.set(a.apl_id, x = { ...a, muns: [] }); x.muns.push(RM.get(a.codmun)?.municipio || a.codmun) }
+  const L = [...by.values()].sort((a, b) => b.muns.length - a.muns.length || a.nome_apl.localeCompare(b.nome_apl, 'pt'));
+  $('h-apl').textContent = `${L.length} APLs em ${cat.size} dos ${cods.length} municípios${UF ? ' da UF' : ''}`;
+  $('t-apl').innerHTML = '<thead><tr><th>APL</th><th>Setor (planilha)</th><th>Grupo</th><th>UF</th><th>Cidade polo</th><th>Municípios na base</th></tr></thead><tbody>' +
+    L.map(a => `<tr><td style="white-space:normal">${esc(a.nome_apl)}</td><td style="white-space:normal;text-align:left">${esc(a.setor)}</td><td style="text-align:left"><span class="dot" style="--bc:${GC[a.setor_grupo][1]}"></span>${esc(GC[a.setor_grupo][0])}</td><td>${a.uf}</td><td style="text-align:left">${esc(a.cidade_polo)}</td><td style="white-space:normal;text-align:left" title="${esc(a.muns.join(', '))}">${a.muns.length}: ${esc(a.muns.slice(0, 6).join(', '))}${a.muns.length > 6 ? '…' : ''}</td></tr>`).join('') + '</tbody>';
+}
+
 // ---------- inicialização ----------
 let mbI, mbS, mbG;
 async function renderAll() {
   ibge(); sicor(); const vis = document.querySelector('.pane:not([hidden])').id;
   if (vis === 'p-ibge') mbI.render(); if (vis === 'p-sicor') mbS.render();
-  if (vis === 'p-geo') { await geo(); mbG.render() } if (vis === 'p-int') await integ()
+  if (vis === 'p-geo') { await geo(); mbG.render() } if (vis === 'p-int') { apls(); await integ() }
 }
 // Visão da aba aberta, anexada ao feedback (seção 10.1) para a equipe reproduzir o que o usuário via
 function visaoAtual() {
@@ -491,6 +526,7 @@ async function main() {
   // Agregação "todos os imóveis" em cache (recortes com variáveis geo e variáveis geo nas abas 1 e 2)
   if (status.pontos) PTS = await q(`SELECT id, organizacao AS org, classe, cadeia, local_citado AS local, precisao AS prec, codmun, municipio AS mun, uf, lat::DOUBLE AS lat, lon::DOUBLE AS lon
     FROM arranjos_pontos WHERE precisao <> 'sem_local' AND coalesce(lat, '') <> '' AND coalesce(lon, '') <> '' ORDER BY id::INT, codmun`);
+  if (status.apl) { APL = await q('SELECT * FROM apl_municipio ORDER BY apl_id, codmun'); for (const a of APL) (APLM.get(a.codmun) || APLM.set(a.codmun, []).get(a.codmun)).push(a) }
   if (status.imoveis) BASEAGG = await aggAll(null);
   else if (status.resumo) { const rs = await q('SELECT * FROM geo_mun_resumo'); BASEAGG = { by: new Map(rs.map(r => [r.codmun, r])) } }
   UFS = [...new Set(R.map(r => r.uf))].sort();
@@ -513,6 +549,7 @@ async function main() {
   $('ctl-int').addEventListener('click', e => { if (e.target.dataset.clr == null) return; Object.assign(intSt, { m: 'q5', p: 'lr', fx: '' }); const c = $('ctl-int'); c.querySelector('[data-k=m]').value = 'q5'; c.querySelector('[data-k=p]').value = 'lr'; c.querySelector('[data-k=fx]').value = ''; c.querySelector('[data-fx]').hidden = true; integ() });
   $('cp-int').onclick = () => { const t = JSON.stringify(intSt.view, null, 1); $('vj-int').hidden = false; $('vj-int').textContent = t; navigator.clipboard?.writeText(t).catch(() => { }) };
   new ResizeObserver(() => { if ($('m1').offsetParent) integ() }).observe($('m1'));
+  new ResizeObserver(() => { if ($('m-apl').offsetParent) apls() }).observe($('m-apl'));
   document.querySelector('#p-int .seg').addEventListener('click', e => { const v = e.target.dataset.mv; if (!v) return; intSt.mv = v; document.querySelectorAll('#p-int .seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mv === v)); integ() });
   $('chips-int').addEventListener('click', e => { const i = e.target.dataset.rmf; if (i != null) intU.remove(+i) });
   const setBar = () => document.documentElement.style.setProperty('--barh', document.querySelector('.bar').offsetHeight + 'px'); setBar(); new ResizeObserver(setBar).observe(document.querySelector('.bar'));

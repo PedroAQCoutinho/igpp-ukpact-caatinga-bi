@@ -62,6 +62,12 @@ export async function init() {
     await conn.query(`CREATE TABLE geo_mun_resumo AS SELECT * FROM read_parquet('geo_mun_resumo.parquet')`);
     status.resumo = true;
   }
+  // APLs do Observatório Brasileiro de APLs (seção 12.2): município × APL, muitos-para-muitos
+  if (await exists('data/apl_municipio.parquet')) {
+    await reg('apl_municipio.parquet', 'data/apl_municipio.parquet');
+    await conn.query(`CREATE TABLE apl_municipio AS SELECT * FROM read_parquet('apl_municipio.parquet')`);
+    status.apl = true;
+  }
   // Arranjos citados nas entrevistas (seção 12.1): CSV versionado, lido como texto (codmun com 7 dígitos)
   const PTS_CSV = 'data/arranjos_pontos_v1_20261125.csv';
   if (await exists(PTS_CSV)) {

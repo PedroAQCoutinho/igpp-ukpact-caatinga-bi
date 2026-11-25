@@ -4,3 +4,4 @@ data/local/
 .env*
 __pycache__/
 .DS_Store
+data/raw/Lista APLs_outubro2022_publico.xlsx

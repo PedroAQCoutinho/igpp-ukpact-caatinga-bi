@@ -1,5 +1,7 @@
 # Prompt consolidado para o Claude Code (v3, 25/11/2026)
 
+**Agente:** Claude Code (máquina de Pedro). **Status:** executado em 25/11/2026. Itens 1–5 e 9 já estavam prontos; 6, 7 e 8 implementados e publicados na VM. Ver `meu-contexto/infra/diario.md` (25/11) e as seções 12 e 13 da especificação.
+
 ```
 git pull no meu-contexto e no igpp-ukpact-caatinga-bi. Antes de começar, siga a regra do AGENTS.md: veja se há issues de feedback abertas neste repo e me mostre o resumo.
 

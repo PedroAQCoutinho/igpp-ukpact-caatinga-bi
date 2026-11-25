@@ -308,12 +308,13 @@ Se o tempo apertar, **corte nesta ordem**: mapa do bioma, Jenks, console SQL ava
   - itens próprios na legenda.
 - Na aba 4, aparecem só os pontos dos municípios do recorte.
 
-### 12.2 APLs do Observatório Brasileiro de APLs (MDIC) — aguardando a planilha
+### 12.2 APLs do Observatório Brasileiro de APLs (MDIC) — implementado em 25/11/2026
 
-- **Fonte escolhida por Pedro:** a planilha oficial "Lista APLs_outubro2022_publico.xlsx" (gov.br, Observatório APL). O download é bloqueado na sessão do Claude, e Pedro vai anexar o arquivo.
-- **Tabela:** `apl_municipio(codmun, apl_id, nome_apl, setor, uf, fonte, ano_ref)`, muitos-para-muitos, recortada para os municípios da base.
-- **Variáveis municipais** para recorte e hachura: `tem_apl`, `tem_apl_setor_<x>` e `n_apls`.
-- **Mapa categórico estático:** seção "Arranjos já existentes" na aba 4, abaixo da tabela por tipologia, colorida por setor, com a lista dos APLs.
+- **Fonte escolhida por Pedro:** a planilha oficial "Lista APLs_outubro2022_publico.xlsx" (gov.br, Observatório APL), baixada pelo Claude Code em 25/11 para `data/raw/`. Ela fica **fora do git**, porque traz nome, e-mail e telefone dos gestores; o manifest guarda a URL e o sha256.
+- **Tabela:** `data/apl_municipio.parquet` (`scripts/preparar_apl.py`): `apl_municipio(codmun, apl_id, nome_apl, setor, setor_grupo, uf, cidade_polo, fonte, ano_ref)`, muitos-para-muitos, recortada para os municípios da base. Os nomes são casados por UF + nome sem acento, só dentro da UF do APL, com 33 grafias corrigidas à mão; "São do Cariri" (PB, ambíguo) ficou de fora. Resultado: 142 APLs, 607 dos 1.095 municípios e 870 pares.
+- **Grupos de setor (Pedro, 25/11):** as 50 grafias da planilha viram 11 grupos: bovinocultura (inclui "Pecuária" genérica), caprinovinocultura, agricultura, fruticultura, apicultura, avicultura, pesca, têxtil (com artesanato e calçados), mineral, turismo e outros.
+- **Variáveis municipais** para recorte e hachura de todos os construtores (grupo "APL"): `tem_apl`, `tem_apl_setor_<grupo>` (1 = sim) e `n_apls`. Não entram na escolha da variável do mapa.
+- **Mapa categórico estático:** seção "Arranjos já existentes" na aba 4, abaixo da tabela por tipologia, colorida por grupo de setor ("dois ou mais setores" em cor própria), com a lista dos APLs. Segue só a UF do topo, não o recorte nem os filtros.
 
 ## 13. Aba Geo para apresentar as seções 2.2 e 2.3 do Relatório 2 (Pedro, 25/11/2026)
 

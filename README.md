@@ -34,7 +34,7 @@ Na versão publicada, o botão **Feedback** (canto inferior direito) envia o rel
 |---|---|
 | 1 · IBGE, 2 · SICOR | Base municipal de Felipe Gandra (19/11/2026), em R$ de 2025 |
 | 3 · Geo, 4 · Geo + socioeconomia | Imóveis do CAR (`proj_ukpact_caatinga`, curupira), um registro por imóvel, sem `cod_imovel` |
-| 5 · Console SQL | SQL do DuckDB sobre `socio_municipal`, `socio_dicionario`, `imoveis` e `geo_mun_resumo` |
+| 5 · Console SQL | SQL do DuckDB sobre `socio_municipal`, `socio_dicionario`, `imoveis`, `geo_mun_resumo`, `apl_municipio` e `arranjos_pontos` |
 
 ## Arquivos de dados
 
@@ -44,6 +44,8 @@ Na versão publicada, o botão **Feedback** (canto inferior direito) envia o rel
 | `data/malha_municipios.json` | sim | `python3 scripts/preparar_malha.py --dir <pasta com os zips do IBGE>` (requer `mapshaper`) |
 | `data/local/imoveis.parquet` | **não** | `python3 scripts/extrair_imoveis.py` (só Pedro; `service=curupira`; SQL em `extract/01_imoveis.sql`) |
 | `data/geo_mun_resumo.parquet` | sim | o mesmo script, a partir do arquivo acima |
+| `data/apl_municipio.parquet` | sim | `python3 -I scripts/preparar_apl.py` (de `data/raw/Lista APLs_outubro2022_publico.xlsx`, que fica fora do git: baixe da URL no manifest) |
+| `data/arranjos_pontos_v1_20261125.csv` | sim | geolocalização manual das entrevistas (seção 12.1 da especificação) |
 | `data/manifest.json` | sim | todos os scripts: origem, data, linhas e totais de conferência |
 
 Depois de extrair: `python3 scripts/conferir_imoveis.py` (compara com o Relatório 2). Antes de cada commit: `python3 scripts/checar_dados.py`.

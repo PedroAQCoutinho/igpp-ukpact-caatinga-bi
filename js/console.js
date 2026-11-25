@@ -16,6 +16,8 @@ const DESC = {
     apto_embargo: 'Critério: sem embargo', apto_fpnd: 'Critério: fora de floresta pública não destinada', apto_uc: 'Critério: fora de UC (UCPI e UCUS)', apto_uc_semucus: 'Critério: fora de UCPI',
     apto_ti_tq: 'Critério: fora de TI e território quilombola', apto_areas_degradadas: 'Critério: possui área degradada', apto_todos: 'Elegível (Eco Invest): apto em todas as salvaguardas', apto_todos_semucus: 'Apto em todas sem contar UCUS (não usado no BI)',
   },
+  apl_municipio: { codmun: 'Código IBGE do município', apl_id: 'Nº do APL na planilha do Observatório', nome_apl: 'Nome do APL', setor: 'Setor produtivo (grafia da planilha)', setor_grupo: 'Grupo de setor usado no BI (tem_apl_setor_<grupo>)', uf: 'UF do APL', cidade_polo: 'Cidade polo', fonte: 'Fonte', ano_ref: 'Ano da lista (outubro de 2022)' },
+  arranjos_pontos: { id: 'Caso no documento das entrevistas', organizacao: 'Organização', classe: 'Classe A–D', precisao: 'municipio | municipio_inferido | regiao_aprox | sem_local', codmun: 'Código IBGE do município do ponto' },
   geo_mun_resumo: { codmun: 'Código IBGE do município', n: 'Imóveis', area: 'Área dos imóveis (ha)', deg: 'Área potencialmente degradada (ha)', elig: 'Degradada em imóveis elegíveis (ha)', apt: 'Imóveis elegíveis' },
 };
 
@@ -95,7 +97,7 @@ async function schema(el) {
   const dic = new Map((await q('SELECT coluna, descricao, unidade FROM socio_dicionario')).map(r => [r.coluna, r.descricao + (r.unidade ? ' (' + r.unidade + ')' : '')]));
   const tabs = (await q(`SELECT table_name FROM information_schema.tables WHERE table_schema='main' ORDER BY 1`)).map(r => r.table_name);
   let h = '';
-  for (const t of ['socio_municipal', 'socio_dicionario', 'imoveis', 'geo_mun_resumo', 'arranjos_pontos']) {
+  for (const t of ['socio_municipal', 'socio_dicionario', 'imoveis', 'geo_mun_resumo', 'arranjos_pontos', 'apl_municipio']) {
     if (!tabs.includes(t)) { h += `<details><summary><b>${t}</b> <span class="u">(${t === 'imoveis' ? 'falta data/local/imoveis.parquet' : 'não disponível'})</span></summary></details>`; continue }
     const cols = await q(`SELECT column_name AS c, data_type AS t FROM information_schema.columns WHERE table_name='${t}' ORDER BY ordinal_position`);
     const n = (await q(`SELECT count(*) AS n FROM ${t}`))[0].n;
