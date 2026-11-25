@@ -355,3 +355,23 @@ O protótipo foi atualizado (v10). Mudanças na aba 3:
 - O conteúdo (título, barra e abas) fica centralizado numa largura máxima de 1600 px (`--larg`), com margens iguais dos dois lados. A margem vem de `--gut`.
 - Nas abas 3 e 4, a coluna da direita (cards e mapa) ocupa 55% e a de filtros 45%.
 - O mapa fixo da direita cresce para preencher a altura da tela, com mínimo de 340 px.
+
+## 16. Zoom nos mapas (pedido de Pedro, 25/11/2026)
+
+- Todos os mapas municipais (`drawMap`) têm botões **+ / − / ⟲** no canto superior esquerdo. O ⟲ volta ao mapa inteiro.
+- **Ctrl + roda do mouse** (⌘ no Mac), ou pinça no trackpad, aproxima no ponto do cursor. A roda sozinha continua rolando a página e mostra uma dica. Duplo clique aproxima; Shift + duplo clique afasta.
+- Com o mapa ampliado, dá para arrastar. O zoom vai de 1× a 12×.
+- As bordas não engrossam ao aproximar, a hachura mantém o espaçamento e os pontos dos arranjos mantêm o tamanho.
+- O zoom se mantém quando o mapa é redesenhado com a mesma extensão, por exemplo ao trocar a paleta ou ligar os pontos. Volta ao inteiro quando o recorte muda a extensão.
+
+## 17. Ideia guardada: polos de irrigação da ANA (não implementar ainda)
+
+- **Fonte:** camada "Polos Nacionais de Agricultura Irrigada" da ANA, com contorno em shapefile e planilha de municípios, no arquivo `Polos_Nacionais.zip` do catálogo de metadados do SNIRH. São 26 polos (2020), com delimitação aprimorada para 28 no Atlas Irrigação 2021.
+- **Proposta discutida em 25/11/2026,** no mesmo padrão dos APLs:
+  - `polo_irrigacao_municipio.parquet` e `polos_irrigacao.geojson`;
+  - variáveis "Tem polo de irrigação" (Sim | Não) e "Polo de irrigação" no recorte e na hachura;
+  - camada de contorno liga/desliga;
+  - bloco na seção "Arranjos já existentes" da aba 4;
+  - opcional: área irrigada municipal do Atlas 2021.
+- **Pendências de Pedro:** a camada aparece em todos os mapas ou só na aba 4; inclui ou não a área irrigada; qual a parte mínima de área para o cruzamento contorno × município.
+- Não confundir com os polos reconhecidos pelo MIDR (Política Nacional de Irrigação), que são outra lista.

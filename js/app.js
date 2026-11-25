@@ -178,6 +178,35 @@ function ramp(p, n) { const s = PAL[p][1]; if (n <= 1) return [s[s.length - 1]];
 // ---------- desenho do mapa ----------
 let HID = 0;
 const ptsBtn = () => `<button class="ptsbtn" data-pts aria-pressed="${PTS_ON}">${PTS_ON ? '●' : '○'} Arranjos citados nas entrevistas (${PTS.length})</button>`;
+// Zoom e arrasto dos mapas: botões + − ⟲, Ctrl/⌘ + roda (ou pinça no trackpad), duplo clique e arrastar quando ampliado.
+const ZOOM_UI = `<div class="zoomc" role="group" aria-label="Zoom do mapa"><button type="button" data-z="in" aria-label="Aproximar" title="Aproximar">+</button><button type="button" data-z="out" aria-label="Afastar" title="Afastar">−</button><button type="button" data-z="0" aria-label="Ver o mapa inteiro" title="Ver o mapa inteiro">⟲</button></div><div class="zhint" hidden>Use Ctrl + roda do mouse (⌘ no Mac) ou os botões para aproximar</div>`;
+function zoomable(box, W, H, pid) {
+  const svg = box.querySelector('svg'), zg = svg.querySelector('.zg'), pat = svg.querySelector('#' + pid), zp = svg.querySelector('.zp'), hint = box.querySelector('.zhint'), Z = box._z;
+  const clamp = () => { Z.s = Math.min(12, Math.max(1, Z.s)); Z.tx = Math.min(0, Math.max(W - W * Z.s, Z.tx)); Z.ty = Math.min(0, Math.max(H - H * Z.s, Z.ty)) };
+  const apply = () => {
+    clamp(); zg.setAttribute('transform', `translate(${Z.tx.toFixed(2)},${Z.ty.toFixed(2)}) scale(${Z.s.toFixed(4)})`);
+    if (pat) pat.setAttribute('patternTransform', `scale(${(1 / Z.s).toFixed(4)}) rotate(45)`);
+    zp.querySelectorAll('circle').forEach(c => { c.setAttribute('cx', (+c.dataset.bx * Z.s + Z.tx).toFixed(1)); c.setAttribute('cy', (+c.dataset.by * Z.s + Z.ty).toFixed(1)) });
+    box.classList.toggle('zoomed', Z.s > 1.001); box.querySelector('[data-z=out]').disabled = box.querySelector('[data-z="0"]').disabled = Z.s <= 1.001; box.querySelector('[data-z=in]').disabled = Z.s >= 11.999;
+  };
+  const toSvg = (cx, cy) => { const r = svg.getBoundingClientRect(); return [(cx - r.left) * W / r.width, (cy - r.top) * H / r.height] };
+  const zoomAt = (f, px = W / 2, py = H / 2) => { const s1 = Math.min(12, Math.max(1, Z.s * f)), k = s1 / Z.s; Z.tx = px - (px - Z.tx) * k; Z.ty = py - (py - Z.ty) * k; Z.s = s1; apply() };
+  box.querySelector('.zoomc').onclick = e => { const b = e.target.closest('[data-z]'); if (!b) return; const z = b.dataset.z; if (z === '0') { Z.s = 1; Z.tx = Z.ty = 0; apply() } else zoomAt(z === 'in' ? 1.6 : 1 / 1.6) };
+  let ht;
+  svg.addEventListener('wheel', e => {
+    if (!(e.ctrlKey || e.metaKey)) { if (hint) { hint.hidden = false; clearTimeout(ht); ht = setTimeout(() => hint.hidden = true, 1400) } return }
+    e.preventDefault(); const [px, py] = toSvg(e.clientX, e.clientY); zoomAt(Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0025)), px, py);
+  }, { passive: false });
+  svg.addEventListener('dblclick', e => { e.preventDefault(); const [px, py] = toSvg(e.clientX, e.clientY); zoomAt(e.shiftKey ? 1 / 2 : 2, px, py) });
+  let drag = null;
+  svg.addEventListener('pointerdown', e => { if (Z.s <= 1.001 || e.button !== 0) return; drag = { x: e.clientX, y: e.clientY, tx: Z.tx, ty: Z.ty, moved: false }; svg.setPointerCapture(e.pointerId) });
+  svg.addEventListener('pointermove', e => {
+    if (!drag) return; const r = svg.getBoundingClientRect(), dx = (e.clientX - drag.x) * W / r.width, dy = (e.clientY - drag.y) * H / r.height;
+    if (!drag.moved && Math.hypot(dx, dy) < 3) return; drag.moved = true; box.classList.add('panning'); Z.tx = drag.tx + dx; Z.ty = drag.ty + dy; apply();
+  });
+  const end = () => { drag = null; box.classList.remove('panning') }; svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+  apply();
+}
 function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors, hatch:Set, unit, title}
   const W = box.clientWidth, H = box.clientHeight; if (!W) return;
   const drawn = o.showOut ? o.cods : o.cods.filter(c => o.inSet.has(c));
@@ -188,7 +217,10 @@ function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors,
   const ringsPath = rs => rs.map(r => 'M' + r.map(P).join('L') + 'Z').join('');
   const path = c => ringsPath(POLY[c] || []);
   const id = 'h' + (++HID);
-  let g = `<defs><pattern id="${id}" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" style="stroke:var(--ink);stroke-width:1.3"/></pattern></defs>`;
+  const zkey = [x0, x1, y0, y1, W, H].map(v => v.toFixed(4)).join();
+  if (box._zk !== zkey) { box._z = { s: 1, tx: 0, ty: 0 }; box._zk = zkey }
+  let pts = '';
+  let g = `<defs><pattern id="${id}" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" style="stroke:var(--ink);stroke-width:1.3"/></pattern></defs><g class="zg">`;
   for (const c of drawn) {
     const inn = o.inSet.has(c), x = o.vals.get(c);
     const fill = !inn ? 'var(--out)' : o.cat ? (o.cat.get(c) || 'var(--zero)') : o.blank ? 'var(--blank)' : x == null ? 'var(--nd)' : x === 0 ? 'var(--zero)' : o.colors[clsOf(x, o.breaks)];
@@ -202,10 +234,12 @@ function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors,
     for (const ids of Object.values(grp)) ids.forEach((i, k) => {
       const p = PTS[i], [x, y] = P([p.lon, p.lat]).split(',').map(Number), n = ids.length, dx = n > 1 ? 7 * Math.cos(2 * Math.PI * k / n) : 0, dy = n > 1 ? 7 * Math.sin(2 * Math.PI * k / n) : 0, col = PCL[p.classe] || '#555', oco = p.prec === 'regiao_aprox';
       const cx = (x + dx).toFixed(1), cy = (y + dy).toFixed(1);
-      g += `<circle cx="${cx}" cy="${cy}" r="8.5" fill="#fff" pointer-events="none"/><circle data-pt="${i}" cx="${cx}" cy="${cy}" r="6" style="fill:${oco ? '#fff' : col};stroke:${col};stroke-width:${oco ? 2.5 : 1.5};cursor:pointer"/>`;
+      pts += `<circle data-bx="${cx}" data-by="${cy}" cx="${cx}" cy="${cy}" r="8.5" fill="#fff" pointer-events="none"/><circle data-pt="${i}" data-bx="${cx}" data-by="${cy}" cx="${cx}" cy="${cy}" r="6" style="fill:${oco ? '#fff' : col};stroke:${col};stroke-width:${oco ? 2.5 : 1.5};cursor:pointer"/>`;
     });
   }
-  box.innerHTML = `<svg role="img" aria-label="${esc(o.title || 'Mapa municipal')}"${o.blank ? ' class="blank"' : ''}>${g}</svg>${PTS.length ? ptsBtn() : ''}<div class="tip" hidden></div>`;
+  g += `</g><g class="zp">${pts}</g>`;
+  box.innerHTML = `<svg role="img" viewBox="0 0 ${W} ${H}" aria-label="${esc(o.title || 'Mapa municipal')}"${o.blank ? ' class="blank"' : ''}>${g}</svg>${PTS.length ? ptsBtn() : ''}${ZOOM_UI}<div class="tip" hidden></div>`;
+  zoomable(box, W, H, id);
   const tip = box.querySelector('.tip');
   box.querySelector('svg').onmousemove = e => {
     const pi = e.target.dataset?.pt;
