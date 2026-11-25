@@ -341,3 +341,4 @@ O protótipo foi atualizado (v10). Mudanças na aba 3:
 - O pop-up de **área potencialmente degradada** mostra `assets/diagrama_areas_degradadas.png` no lugar do Quadro 3 em HTML.
 - O card de **dinâmica da aridez** tem dois botões: "ⓘ Como foi classificado" (`assets/diagrama_dinamica_aridez.png`) e "ⓘ Mapa" (Figura 51).
 - Os dois diagramas têm botão de download.
+- Implementado no BI (`js/app.js`, objeto `FIG`: `deg` e `ar2`) em 25/11/2026.
