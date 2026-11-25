@@ -342,3 +342,10 @@ O protótipo foi atualizado (v10). Mudanças na aba 3:
 - O card de **dinâmica da aridez** tem dois botões: "ⓘ Como foi classificado" (`assets/diagrama_dinamica_aridez.png`) e "ⓘ Mapa" (Figura 51).
 - Os dois diagramas têm botão de download.
 - Implementado no BI (`js/app.js`, objeto `FIG`: `deg` e `ar2`) em 25/11/2026.
+
+## 14. Tema claro/escuro (pedido de Pedro, 25/11/2026)
+
+- Há um botão "☀ Claro | ☾ Escuro" na barra fixa do topo, à direita.
+- Sem escolha, o BI segue o tema do sistema. A escolha fica salva só no navegador de cada pessoa (`localStorage`).
+- O código está em `js/tema.js`, carregado no `<head>` para a página não piscar.
+- As cores vêm das variáveis `light-dark()` do `:root`. As paletas de dados (MapBiomas, legendas) e as figuras não mudam com o tema; as figuras ficam sobre fundo branco.

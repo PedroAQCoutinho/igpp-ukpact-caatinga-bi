@@ -15,6 +15,7 @@
 :root{color-scheme:light dark;--bg:light-dark(#ffffff,#121513);--ink:light-dark(#1d2420,#e6ebe7);--mut:light-dark(#5d6b62,#9aa79f);--line:light-dark(#e3e7e4,#2a312d);--soft:light-dark(#f3f5f2,#1a1f1c);--main:light-dark(#4f6b55,#86a98d);--acc:light-dark(#c4761a,#e39a3f);--out:light-dark(#e6e8e7,#262c29);--nd:light-dark(#c9cecb,#454d48);--zero:light-dark(#ffffff,#121513)}
 :root{--blank:light-dark(#fbfcfb,#1c211e)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+.tema{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}.tema button{min-height:40px;padding:0 12px;border:0;background:var(--soft);cursor:pointer;color:var(--mut)}.tema button+button{border-left:1px solid var(--line)}.tema button[aria-pressed=true]{background:var(--main);color:#fff}
 *{box-sizing:border-box;min-width:0}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Source Sans 3",system-ui,sans-serif;overflow-x:clip}
 header{padding:24px max(4vw,16px) 6px}
@@ -192,6 +193,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:var(--in
 @media(max-width:860px){.mb{grid-template-columns:1fr}}
 @media(max-width:600px){.row{grid-template-columns:100px minmax(0,1fr) 78px;font-size:14px}.map{min-height:360px}}
 </style>
+<script src="js/tema.js"></script>
 </head>
 <body>
 <header>
@@ -207,6 +209,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:var(--in
 <button role="tab" data-p="sql" aria-selected="false">5 · Console SQL</button>
 </div>
 <label>UF <select id="uf"></select></label>
+<div class="tema" role="group" aria-label="Tema da tela"><button type="button" data-tema="light" aria-pressed="false">☀ Claro</button><button type="button" data-tema="dark" aria-pressed="false">☾ Escuro</button></div>
 </div>
 <p id="load">Carregando…</p>
 <main>
