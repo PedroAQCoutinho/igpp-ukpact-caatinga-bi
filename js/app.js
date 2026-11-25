@@ -178,20 +178,22 @@ function ramp(p, n) { const s = PAL[p][1]; if (n <= 1) return [s[s.length - 1]];
 // ---------- desenho do mapa ----------
 let HID = 0;
 const ptsBtn = () => `<button class="ptsbtn" data-pts aria-pressed="${PTS_ON}">${PTS_ON ? '●' : '○'} Arranjos citados nas entrevistas (${PTS.length})</button>`;
-// Zoom e arrasto dos mapas: botões + − ⟲, Ctrl/⌘ + roda (ou pinça no trackpad), duplo clique e arrastar quando ampliado.
-const ZOOM_UI = `<div class="zoomc" role="group" aria-label="Zoom do mapa"><button type="button" data-z="in" aria-label="Aproximar" title="Aproximar">+</button><button type="button" data-z="out" aria-label="Afastar" title="Afastar">−</button><button type="button" data-z="0" aria-label="Ver o mapa inteiro" title="Ver o mapa inteiro">⟲</button></div><div class="zhint" hidden>Use Ctrl + roda do mouse (⌘ no Mac) ou os botões para aproximar</div>`;
-function zoomable(box, W, H, pid) {
+// Zoom e arrasto dos mapas: botões + − ⟲ (volta à seleção) ⤢ (bioma inteiro; afasta além do recorte), Ctrl/⌘ + roda (ou pinça no trackpad), duplo clique e arrastar quando ampliado.
+const ZOOM_UI = `<div class="zoomc" role="group" aria-label="Zoom do mapa"><button type="button" data-z="in" aria-label="Aproximar" title="Aproximar">+</button><button type="button" data-z="out" aria-label="Afastar" title="Afastar">−</button><button type="button" data-z="0" aria-label="Voltar à seleção" title="Voltar à seleção">⟲</button><button type="button" data-z="all" aria-label="Ver o bioma inteiro" title="Ver o bioma inteiro">⤢</button></div><div class="zhint" hidden>Use Ctrl + roda do mouse (⌘ no Mac) ou os botões para aproximar</div>`;
+function zoomable(box, W, H, pid, C) {
   const svg = box.querySelector('svg'), zg = svg.querySelector('.zg'), pat = svg.querySelector('#' + pid), zp = svg.querySelector('.zp'), hint = box.querySelector('.zhint'), Z = box._z;
-  const clamp = () => { Z.s = Math.min(12, Math.max(1, Z.s)); Z.tx = Math.min(0, Math.max(W - W * Z.s, Z.tx)); Z.ty = Math.min(0, Math.max(H - H * Z.s, Z.ty)) };
+  const M = 12, SMIN = Math.min(1, (W - 2 * M) / (C[2] - C[0]), (H - 2 * M) / (C[3] - C[1])), lim = (t, a, b, L) => { const lo = Math.min(M - a * Z.s, L - M - b * Z.s), hi = Math.max(M - a * Z.s, L - M - b * Z.s); return Math.min(hi, Math.max(lo, t)) };
+  const clamp = () => { Z.s = Math.min(12, Math.max(SMIN, Z.s)); Z.tx = lim(Z.tx, C[0], C[2], W); Z.ty = lim(Z.ty, C[1], C[3], H) };
   const apply = () => {
     clamp(); zg.setAttribute('transform', `translate(${Z.tx.toFixed(2)},${Z.ty.toFixed(2)}) scale(${Z.s.toFixed(4)})`);
     if (pat) pat.setAttribute('patternTransform', `scale(${(1 / Z.s).toFixed(4)}) rotate(45)`);
     zp.querySelectorAll('circle').forEach(c => { c.setAttribute('cx', (+c.dataset.bx * Z.s + Z.tx).toFixed(1)); c.setAttribute('cy', (+c.dataset.by * Z.s + Z.ty).toFixed(1)) });
-    box.classList.toggle('zoomed', Z.s > 1.001); box.querySelector('[data-z=out]').disabled = box.querySelector('[data-z="0"]').disabled = Z.s <= 1.001; box.querySelector('[data-z=in]').disabled = Z.s >= 11.999;
+    const ini = Math.abs(Z.s - 1) < 1e-3 && Math.abs(Z.tx) < .5 && Math.abs(Z.ty) < .5, todo = Z.s <= SMIN + 1e-3;
+    box.classList.toggle('zoomed', !ini); box.querySelector('[data-z=out]').disabled = todo; box.querySelector('[data-z="0"]').disabled = ini; box.querySelector('[data-z=all]').disabled = todo || SMIN > .999; box.querySelector('[data-z=in]').disabled = Z.s >= 11.999;
   };
   const toSvg = (cx, cy) => { const r = svg.getBoundingClientRect(); return [(cx - r.left) * W / r.width, (cy - r.top) * H / r.height] };
-  const zoomAt = (f, px = W / 2, py = H / 2) => { const s1 = Math.min(12, Math.max(1, Z.s * f)), k = s1 / Z.s; Z.tx = px - (px - Z.tx) * k; Z.ty = py - (py - Z.ty) * k; Z.s = s1; apply() };
-  box.querySelector('.zoomc').onclick = e => { const b = e.target.closest('[data-z]'); if (!b) return; const z = b.dataset.z; if (z === '0') { Z.s = 1; Z.tx = Z.ty = 0; apply() } else zoomAt(z === 'in' ? 1.6 : 1 / 1.6) };
+  const zoomAt = (f, px = W / 2, py = H / 2) => { const s1 = Math.min(12, Math.max(SMIN, Z.s * f)), k = s1 / Z.s; Z.tx = px - (px - Z.tx) * k; Z.ty = py - (py - Z.ty) * k; Z.s = s1; apply() };
+  box.querySelector('.zoomc').onclick = e => { const b = e.target.closest('[data-z]'); if (!b) return; const z = b.dataset.z; if (z === '0') { Z.s = 1; Z.tx = Z.ty = 0; apply() } else if (z === 'all') { Z.s = SMIN; Z.tx = (W - (C[0] + C[2]) * SMIN) / 2; Z.ty = (H - (C[1] + C[3]) * SMIN) / 2; apply() } else zoomAt(z === 'in' ? 1.6 : 1 / 1.6) };
   let ht;
   svg.addEventListener('wheel', e => {
     if (!(e.ctrlKey || e.metaKey)) { if (hint) { hint.hidden = false; clearTimeout(ht); ht = setTimeout(() => hint.hidden = true, 1400) } return }
@@ -199,7 +201,7 @@ function zoomable(box, W, H, pid) {
   }, { passive: false });
   svg.addEventListener('dblclick', e => { e.preventDefault(); const [px, py] = toSvg(e.clientX, e.clientY); zoomAt(e.shiftKey ? 1 / 2 : 2, px, py) });
   let drag = null;
-  svg.addEventListener('pointerdown', e => { if (Z.s <= 1.001 || e.button !== 0) return; drag = { x: e.clientX, y: e.clientY, tx: Z.tx, ty: Z.ty, moved: false }; svg.setPointerCapture(e.pointerId) });
+  svg.addEventListener('pointerdown', e => { if (e.button !== 0) return; drag = { x: e.clientX, y: e.clientY, tx: Z.tx, ty: Z.ty, moved: false }; svg.setPointerCapture(e.pointerId) });
   svg.addEventListener('pointermove', e => {
     if (!drag) return; const r = svg.getBoundingClientRect(), dx = (e.clientX - drag.x) * W / r.width, dy = (e.clientY - drag.y) * H / r.height;
     if (!drag.moved && Math.hypot(dx, dy) < 3) return; drag.moved = true; box.classList.add('panning'); Z.tx = drag.tx + dx; Z.ty = drag.ty + dy; apply();
@@ -239,7 +241,9 @@ function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors,
   }
   g += `</g><g class="zp">${pts}</g>`;
   box.innerHTML = `<svg role="img" viewBox="0 0 ${W} ${H}" aria-label="${esc(o.title || 'Mapa municipal')}"${o.blank ? ' class="blank"' : ''}>${g}</svg>${PTS.length ? ptsBtn() : ''}${ZOOM_UI}<div class="tip" hidden></div>`;
-  zoomable(box, W, H, id);
+  let cx0 = 0, cy0 = 0, cx1 = W, cy1 = H; // área navegável: quadro inicial ∪ bioma inteiro
+  for (const r of (BIOMA.length ? BIOMA : Object.values(POLY).flat())) for (const q of r) { const [px, py] = P(q).split(',').map(Number); if (px < cx0) cx0 = px; if (px > cx1) cx1 = px; if (py < cy0) cy0 = py; if (py > cy1) cy1 = py }
+  zoomable(box, W, H, id, [cx0, cy0, cx1, cy1]);
   const tip = box.querySelector('.tip');
   box.querySelector('svg').onmousemove = e => {
     const pi = e.target.dataset?.pt;

@@ -358,9 +358,10 @@ O protótipo foi atualizado (v10). Mudanças na aba 3:
 
 ## 16. Zoom nos mapas (pedido de Pedro, 25/11/2026)
 
-- Todos os mapas municipais (`drawMap`) têm botões **+ / − / ⟲** no canto superior esquerdo. O ⟲ volta ao mapa inteiro.
+- Todos os mapas municipais (`drawMap`) têm botões **+ / − / ⟲ / ⤢** no canto superior esquerdo. O ⟲ volta ao enquadramento da seleção e o ⤢ mostra o bioma inteiro.
+- **Afastar vai além do recorte:** seja qual for o filtro de municípios ou a UF, dá para afastar até ver o bioma inteiro, com o contorno do bioma como referência (correção de 25/11/2026). Aproximar vai até 12× o enquadramento da seleção.
 - **Ctrl + roda do mouse** (⌘ no Mac), ou pinça no trackpad, aproxima no ponto do cursor. A roda sozinha continua rolando a página e mostra uma dica. Duplo clique aproxima; Shift + duplo clique afasta.
-- Com o mapa ampliado, dá para arrastar. O zoom vai de 1× a 12×.
+- Dá para arrastar o mapa dentro da área do bioma.
 - As bordas não engrossam ao aproximar, a hachura mantém o espaçamento e os pontos dos arranjos mantêm o tamanho.
 - O zoom se mantém quando o mapa é redesenhado com a mesma extensão, por exemplo ao trocar a paleta ou ligar os pontos. Volta ao inteiro quando o recorte muda a extensão.
 
