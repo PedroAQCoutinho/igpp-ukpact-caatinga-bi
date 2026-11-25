@@ -349,3 +349,9 @@ O protótipo foi atualizado (v10). Mudanças na aba 3:
 - Sem escolha, o BI segue o tema do sistema. A escolha fica salva só no navegador de cada pessoa (`localStorage`).
 - O código está em `js/tema.js`, carregado no `<head>` para a página não piscar.
 - As cores vêm das variáveis `light-dark()` do `:root`. As paletas de dados (MapBiomas, legendas) e as figuras não mudam com o tema; as figuras ficam sobre fundo branco.
+
+## 15. Distribuição na tela (pedido de Pedro, 25/11/2026)
+
+- O conteúdo (título, barra e abas) fica centralizado numa largura máxima de 1600 px (`--larg`), com margens iguais dos dois lados. A margem vem de `--gut`.
+- Nas abas 3 e 4, a coluna da direita (cards e mapa) ocupa 55% e a de filtros 45%.
+- O mapa fixo da direita cresce para preencher a altura da tela, com mínimo de 340 px.
