@@ -335,3 +335,9 @@ O protótipo foi atualizado (v10). Mudanças na aba 3:
 6. **Seleção por tipologia:**
    - a tabela mostra **a área de cada uso** (agricultura, pastagem, mosaico, vegetação nativa), com subtotais por grupo, e **não** a área degradada (esta fica na aba 4);
    - ao lado, uma **pizza** por tipologia, com alternância Nº de CAR | Área, em tons por grupo (verdes = agricultura familiar, laranjas = híbrido, azuis = potencial Eco Invest).
+
+### 13.1 Diagramas próprios (25/11/2026)
+
+- O pop-up de **área potencialmente degradada** mostra `assets/diagrama_areas_degradadas.png` no lugar do Quadro 3 em HTML.
+- O card de **dinâmica da aridez** tem dois botões: "ⓘ Como foi classificado" (`assets/diagrama_dinamica_aridez.png`) e "ⓘ Mapa" (Figura 51).
+- Os dois diagramas têm botão de download.
