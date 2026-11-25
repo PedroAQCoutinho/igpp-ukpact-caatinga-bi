@@ -287,3 +287,30 @@ Se o tempo apertar, **corte nesta ordem**: mapa do bioma, Jenks, console SQL ava
   - Pedro tem conta na DeepSeek (pré-pago).
   - **Antes de comprar,** confirmar se o iGPP/UK Pact (FCDO, beneficiário MAPA) permite serviços de IA de empresa chinesa. A alternativa é Claude ou OpenAI, trocando só a configuração.
 - **Antes de abrir para a equipe:** teste com cerca de 20 perguntas de resposta conhecida (ex.: os totais do Relatório 2).
+
+## 12. Arranjos e APLs no mapa (Pedro, 25/11/2026)
+
+### 12.1 Pontos: "Arranjos citados nas entrevistas" (já no protótipo)
+
+- **Fonte:** `Arranjos_Inclusao_Recuperacao_v1_20261125.docx`, uma sistematização preliminar e de uso interno das entrevistas, com 21 casos classificados de A a D.
+- **Geolocalização:** em `data/arranjos_pontos_v1_20261125.csv`, no nível de município, porque o documento não traz endereços. Cada linha tem `precisao`:
+  - `municipio`: município citado;
+  - `municipio_inferido`: Kariri-Xocó → Porto Real do Colégio; Casa Apis → Picos. Conferir;
+  - `regiao_aprox`: só a região foi citada; o ponto vai num município representativo;
+  - `sem_local`: fora do mapa.
+- **Decisão de Pedro:** **só entram as linhas com ponto** (22 pontos). As sem local ficam listadas no CSV.
+- **Interface:**
+  - botão **liga/desliga "Arranjos citados nas entrevistas (n)"** no canto de **todos** os mapas, sincronizado entre as abas e desligado por padrão;
+  - cor por classe (A `#1a7f3c`, B `#2f6fb0`, C `#c4761a`, D `#7a5a8c`), com halo branco;
+  - **ponto cheio** para município e **ponto vazado** para região aproximada;
+  - pontos no mesmo município ficam lado a lado, sem sobreposição;
+  - *dica de hover* com organização, classe, cadeia, local citado e precisão;
+  - itens próprios na legenda.
+- Na aba 4, aparecem só os pontos dos municípios do recorte.
+
+### 12.2 APLs do Observatório Brasileiro de APLs (MDIC) — aguardando a planilha
+
+- **Fonte escolhida por Pedro:** a planilha oficial "Lista APLs_outubro2022_publico.xlsx" (gov.br, Observatório APL). O download é bloqueado na sessão do Claude, e Pedro vai anexar o arquivo.
+- **Tabela:** `apl_municipio(codmun, apl_id, nome_apl, setor, uf, fonte, ano_ref)`, muitos-para-muitos, recortada para os municípios da base.
+- **Variáveis municipais** para recorte e hachura: `tem_apl`, `tem_apl_setor_<x>` e `n_apls`.
+- **Mapa categórico estático:** seção "Arranjos já existentes" na aba 4, abaixo da tabela por tipologia, colorida por setor, com a lista dos APLs.

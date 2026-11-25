@@ -162,6 +162,8 @@ tr.gt td{background:color-mix(in srgb,var(--bc) 14%,var(--bg));font-weight:700}
 .fb footer .send:disabled{opacity:.5;cursor:not-allowed}
 .fb .msg{font-size:14px}
 .fb .rec{color:#c0392b;font-weight:700}
+.ptsbtn{position:absolute;top:8px;right:8px;z-index:3;min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:18px;background:var(--bg);color:var(--ink);font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.ptsbtn[aria-pressed=true]{background:var(--ink);color:var(--bg)}
 [hidden]{display:none!important}
 @media(max-width:860px){.mb{grid-template-columns:1fr}}
 @media(max-width:600px){.row{grid-template-columns:100px minmax(0,1fr) 78px;font-size:14px}.map{min-height:360px}}

@@ -19,6 +19,7 @@ const PAL={lr:['Laranja → roxo',['#fde0b6','#f6a75f','#d9744a','#a3568a','#6b4
 const METH={q4:'Quartis',q5:'Quintis',q10:'Decis',eq:'Intervalos iguais (5)',jk:'Quebras naturais (5)',fx:'Limites fixos'};
 const OPS={'>':'>','>=':'≥','<':'<','<=':'≤'};
 
+let PTS=[],PTS_ON=false;const PCL={A:'#1a7f3c',B:'#2f6fb0',C:'#c4761a',D:'#7a5a8c'},PRL={municipio:'município citado',municipio_inferido:'município inferido (conferir)',regiao_aprox:'região aproximada'};
 let R=[],RM=new Map(),UF='',UFS=[],POLY={},AREA=new Map(),IM=null,BASEAGG=null;
 
 // ---------- variáveis municipais ----------
@@ -147,6 +148,7 @@ function ramp(p,n){const s=PAL[p][1];if(n<=1)return[s[s.length-1]];return[...Arr
 
 // ---------- desenho do mapa ----------
 let HID=0;
+function ptsBtn(){return `<button class="ptsbtn" data-pts aria-pressed="${PTS_ON}">${PTS_ON?'●':'○'} Arranjos citados nas entrevistas (${PTS.length})</button>`}
 function drawMap(box,o){ // o:{cods, inSet, showOut, vals:Map, breaks, colors, hatch:Set, unit, title}
  const W=box.clientWidth,H=box.clientHeight;if(!W)return;
  const drawn=o.showOut?o.cods:o.cods.filter(c=>o.inSet.has(c));
@@ -161,9 +163,14 @@ function drawMap(box,o){ // o:{cods, inSet, showOut, vals:Map, breaks, colors, h
   const fill=!inn?'var(--out)':o.blank?'var(--blank)':x==null?'var(--nd)':x===0?'var(--zero)':o.colors[clsOf(x,o.breaks)];
   g+=`<path class="m" data-c="${c}" d="${path(c)}" fill="${fill}"/>`;}
  if(o.hatch)for(const c of drawn)if(o.hatch.has(c)&&o.inSet.has(c))g+=`<path d="${path(c)}" fill="url(#${id})" pointer-events="none"/>`;
- box.innerHTML=`<svg role="img" aria-label="${esc(o.title||'Mapa municipal')}"${o.blank?' class="blank"':''}>${g}</svg><div class="tip" hidden></div>`;
+ if(PTS_ON){const dset=new Set(o.showOut?drawn:drawn.filter(c=>o.inSet.has(c))),grp={};
+  PTS.forEach((p,i)=>{if(dset.has(p.codmun))(grp[p.codmun]=grp[p.codmun]||[]).push(i)});
+  for(const ids of Object.values(grp))ids.forEach((i,k)=>{const p=PTS[i],[x,y]=P([p.lon,p.lat]).split(',').map(Number),n=ids.length,dx=n>1?7*Math.cos(2*Math.PI*k/n):0,dy=n>1?7*Math.sin(2*Math.PI*k/n):0,col=PCL[p.classe],oco=p.prec==='regiao_aprox';
+   const cx_=(x+dx).toFixed(1),cy_=(y+dy).toFixed(1);g+=`<circle cx="${cx_}" cy="${cy_}" r="8.5" fill="#fff" pointer-events="none"/><circle data-pt="${i}" cx="${cx_}" cy="${cy_}" r="6" style="fill:${oco?'#fff':col};stroke:${col};stroke-width:${oco?2.5:1.5};cursor:pointer"/>`})}
+ box.innerHTML=`<svg role="img" aria-label="${esc(o.title||'Mapa municipal')}"${o.blank?' class="blank"':''}>${g}</svg>${PTS.length?ptsBtn():''}<div class="tip" hidden></div>`;
  const tip=box.querySelector('.tip');
- box.querySelector('svg').onmousemove=e=>{const c=e.target.dataset?.c;if(!c){tip.hidden=true;return}const r=RM.get(c),x=o.vals.get(c),b=box.getBoundingClientRect();
+ box.querySelector('svg').onmousemove=e=>{const pi=e.target.dataset?.pt;if(pi!=null){const p=PTS[+pi],b=box.getBoundingClientRect();tip.textContent=`${p.org} · classe ${p.classe} · ${p.cadeia} · ${p.local} (${PRL[p.prec]}${p.prec!=='municipio'?': '+p.mun+'/'+p.uf:''})`;tip.hidden=false;let lx=e.clientX-b.left+12;if(lx>W-tip.offsetWidth-4)lx=Math.max(4,e.clientX-b.left-tip.offsetWidth-12);tip.style.left=lx+'px';tip.style.top=(e.clientY-b.top+12)+'px';return}
+  const c=e.target.dataset?.c;if(!c){tip.hidden=true;return}const r=RM.get(c),x=o.vals.get(c),b=box.getBoundingClientRect();
   tip.textContent=`${r.municipio} (${r.uf})${o.blank?(o.inSet.has(c)?'':' · fora do recorte'):': '+(o.inSet.has(c)?(x==null?'sem dado':fmt(x)+' '+o.unit):'fora do recorte')}${o.hatch&&o.hatch.has(c)?' · hachura':''}`;tip.hidden=false;
   let lx=e.clientX-b.left+12;if(lx>W-tip.offsetWidth-4)lx=e.clientX-b.left-tip.offsetWidth-12;tip.style.left=lx+'px';tip.style.top=(e.clientY-b.top+12)+'px'};
  box.querySelector('svg').onmouseleave=()=>tip.hidden=true;
@@ -177,6 +184,7 @@ function legendHTML(o){if(o.blank){const k=o.cods.filter(c=>o.inSet.has(c)).leng
  if(z)h+=`<div><i style="background:var(--zero)"></i>zero <span class="u">(${z})</span></div>`;if(nd)h+=`<div><i style="background:var(--nd)"></i>sem dado na fonte <span class="u">(${nd})</span></div>`;
  if(out&&o.showOut)h+=`<div><i style="background:var(--out)"></i>fora do recorte <span class="u">(${out})</span></div>`;
  if(o.hatch)h+=`<div><i style="background:repeating-linear-gradient(45deg,var(--ink) 0 1.5px,transparent 1.5px 5px)"></i>hachura: ${esc(o.hatchLabel)} <span class="u">(${[...o.hatch].filter(c=>o.inSet.has(c)).length})</span></div>`;
+ if(PTS_ON)h+=`<div style="margin-top:4px"><b>Arranjos citados nas entrevistas</b></div>`+Object.entries(PCL).map(([k,c])=>`<div><i style="background:${c};border-radius:50%;width:13px"></i>classe ${k}</div>`).join('')+`<div><i style="background:var(--bg);border:2.5px solid var(--mut);border-radius:50%;width:13px"></i>ponto em região aproximada</div>`;
  return h}
 const flabel=fs=>fs.map(f=>`${V[f.v].l}${f.ag?' — '+AG[f.ag]:''} ${OPS[f.op]} ${fmt(f.x)} ${V[f.v].u}`).join(' e ');
 
@@ -339,6 +347,7 @@ function integ(){
 let mbI,mbS,mbG;
 function renderAll(){ibge();sicor();BASEAGG||(BASEAGG=aggImoveis(null));geo();const vis=document.querySelector('.pane:not([hidden])').id;
  if(vis==='p-ibge')mbI.render();if(vis==='p-sicor')mbS.render();if(vis==='p-geo')mbG.render();if(vis==='p-int')integ()}
+fetch('arranjos_pontos.json').then(r=>r.ok?r.json():{pontos:[]}).catch(()=>({pontos:[]})).then(j=>{PTS=j.pontos||[];if(R.length)renderAll()});
 Promise.all(['data.json','geo.json','imoveis_simulados.json'].map(f=>fetch(f).then(r=>{if(!r.ok)throw new Error(f);return r.json()}))).then(([d,g,im])=>{
  R=d.rows.map(a=>Object.fromEntries(d.cols.map((c,i)=>[c,a[i]])));
  POLY=g;IM=im;
@@ -371,6 +380,7 @@ Promise.all(['data.json','geo.json','imoveis_simulados.json'].map(f=>fetch(f).th
  $('uf').onchange=()=>{UF=$('uf').value;renderAll()};
  document.querySelectorAll('[role=tab]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[role=tab]').forEach(x=>x.setAttribute('aria-selected',x===b));
   document.querySelectorAll('.pane').forEach(p=>p.hidden=p.id!=='p-'+b.dataset.p);renderAll()}));
+ document.addEventListener('click',e=>{if(e.target.closest('[data-pts]')){PTS_ON=!PTS_ON;renderAll()}});
  renderAll();
 }).catch(e=>{document.querySelector('main').textContent='Não foi possível carregar os dados: '+e.message});
 }

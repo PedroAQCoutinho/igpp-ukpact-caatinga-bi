@@ -1,0 +1,35 @@
+id,organizacao,classe,cadeia,local_citado,precisao,municipio,uf,codmun,lat,lon,na_base_caatinga,observacao
+1,Cooperativa de comunidades de fundo de pasto (extrativismo + Agrocaatinga),A,"Umbu, maracujá-do-mato; SAF","Canudos, Uauá e Curaçá (BA)",municipio,Uauá,BA,2932002,-9.8958,-39.44376,sim,Coopercuc (sede em Uauá)
+1,Cooperativa de comunidades de fundo de pasto (extrativismo + Agrocaatinga),A,"Umbu, maracujá-do-mato; SAF","Canudos, Uauá e Curaçá (BA)",municipio,Canudos,BA,2906824,-10.07098,-38.98424,sim,
+1,Cooperativa de comunidades de fundo de pasto (extrativismo + Agrocaatinga),A,"Umbu, maracujá-do-mato; SAF","Canudos, Uauá e Curaçá (BA)",municipio,Curaçá,BA,2909901,-9.26277,-39.63981,sim,
+2,Recaatingamento com comunidades de fundo de pasto,A,Plano comunitário de uso,Norte da Bahia,regiao_aprox,Juazeiro,BA,2918407,-9.54375,-40.2729,sim,Ponto representativo do norte da Bahia; o documento não cita município
+3,Rede de Mulheres do Pajeú,A,"Barraginhas, contenções, agroecologia",Sertão do Pajeú (PE),regiao_aprox,Afogados da Ingazeira,PE,2600104,-7.73676,-37.61973,sim,Ponto representativo do Pajeú; sede da rede não informada
+4,"Pactos territoriais “produzir, proteger e incluir”",A,"Caprinocultura, algodão, caju, mel, horticultura",Sertão do Apodi (RN),regiao_aprox,Apodi,RN,2401008,-5.62786,-37.83526,sim,Território do pacto; ponto no município que dá nome à região
+4,"Pactos territoriais “produzir, proteger e incluir”",A,"Caprinocultura, algodão, caju, mel, horticultura",Cariri Ocidental (PB),regiao_aprox,Monteiro,PB,2509701,-7.90737,-37.09228,sim,Território do pacto; ponto representativo
+4,"Pactos territoriais “produzir, proteger e incluir”",A,"Caprinocultura, algodão, caju, mel, horticultura",Sertão do Pajeú (PE),regiao_aprox,Afogados da Ingazeira,PE,2600104,-7.73676,-37.61973,sim,Território do pacto; ponto representativo
+5,Ações de restauração com o povo Kariri-Xocó,A,Meia-lua e contenção,Sul de Alagoas e norte de Sergipe,municipio_inferido,Porto Real do Colégio,AL,2707503,-10.12373,-36.73778,sim,Inferência: Terra Indígena Kariri-Xocó fica em Porto Real do Colégio; conferir
+6,"SAF frutífero, forrageiro e melífero",B,SAF,Sertão do Pajeú,regiao_aprox,Afogados da Ingazeira,PE,2600104,-7.73676,-37.61973,sim,Ponto representativo
+6,"SAF frutífero, forrageiro e melífero",B,SAF,Cariri paraibano,regiao_aprox,Monteiro,PB,2509701,-7.90737,-37.09228,sim,Ponto representativo
+6,"SAF frutífero, forrageiro e melífero",B,SAF,Sertão do Apodi,regiao_aprox,Apodi,RN,2401008,-5.62786,-37.83526,sim,Ponto representativo
+7,Redes de sementes nativas,B,Sementes e mudas,"Caatinga, várias redes",sem_local,,,,,,,"Várias redes, sem lugar definido"
+8,Recaatingamento que amplia quintais produtivos (INSA),B,Quintais,Semiárido (projetos do INSA),sem_local,,,,,,,Projetos dispersos
+9,Pequenas fábricas de bioinsumos (projeto Terra Mesa),B,Bioinsumos,Cooperativas de vários estados,sem_local,,,,,,,
+10,Proposta de fábrica de bioinsumos com o MST,B,Bioinsumos,Caatinga,sem_local,,,,,,,Proposta sem local
+11,Arranjo de teste de bioinsumos do CETENE,B,Bioinsumos,Chapada Diamantina (BA),regiao_aprox,Seabra,BA,2929909,-12.4204,-41.88113,sim,Ponto representativo da Chapada; associação não identificada
+12,Associações e cooperativas da caprinovinocultura com manejo do pastejo,C,Caprinos e ovinos,Vale do Itaim (PI),regiao_aprox,Paulistana,PI,2207801,-8.16239,-41.21849,sim,Ponto representativo do Vale do Itaim
+12,Associações e cooperativas da caprinovinocultura com manejo do pastejo,C,Caprinos e ovinos,Inhamuns (CE),regiao_aprox,Tauá,CE,2313302,-5.93656,-40.25914,sim,Ponto representativo dos Inhamuns
+12,Associações e cooperativas da caprinovinocultura com manejo do pastejo,C,Caprinos e ovinos,Crateús (CE),municipio,Crateús,CE,2304103,-5.19854,-40.71936,sim,
+12,Associações e cooperativas da caprinovinocultura com manejo do pastejo,C,Caprinos e ovinos,Uauá (BA),municipio,Uauá,BA,2932002,-9.8958,-39.44376,sim,
+12,Associações e cooperativas da caprinovinocultura com manejo do pastejo,C,Caprinos e ovinos,Pintadas (BA),municipio,Pintadas,BA,2924652,-11.87113,-39.906,sim,
+12,Associações e cooperativas da caprinovinocultura com manejo do pastejo,C,Caprinos e ovinos,RN,sem_local,,RN,,,,,Só a UF foi citada
+13,Cooperativas de mel exportadoras,C,Apicultura,Simplício Mendes (PI),municipio,Simplício Mendes,PI,2210805,-7.80137,-42.01858,sim,Cooperativa de Simplício Mendes
+13,Cooperativas de mel exportadoras,C,Apicultura,Casa Apis (PI),municipio_inferido,Picos,PI,2208007,-7.06381,-41.52303,sim,Inferência: sede da Casa Apis em Picos; conferir
+13,Cooperativas de mel exportadoras,C,Apicultura,Mel do Sertão (PI),sem_local,,PI,,,,,Município da cooperativa não identificado
+14,Rede de algodão agroecológico,C,Algodão agroecológico,"RN, PI, CE, PB e PE",sem_local,,,,,,,Rede em cinco estados
+15,Arranjo da anileira,C,Corante natural,Monteiro (PB),municipio,Monteiro,PB,2509701,-7.90737,-37.09228,sim,
+16,Cooperativa de queijo de cabra ligada à Coopercuc,C,Leite de cabra,Uauá (BA),municipio,Uauá,BA,2932002,-9.8958,-39.44376,sim,
+17,"Cooperativa gerida por mulheres, queijo premiado",C,Leite,Paraíba,sem_local,,PB,,,,,Só a UF foi citada
+18,Extrativismo do licuri,C,Licuri,Norte da Bahia,sem_local,,BA,,,,,Região ampla; sem município
+19,Conexsus no 4º Leilão do Eco Invest,D,Sociobiodiversidade,Nacional,sem_local,,,,,,,
+20,Selo Biocombustível Social,D,Compra de cooperativas,Nordeste,sem_local,,,,,,,
+21,Projeto Sertão Vivo,D,Sistemas diversificados,Bahia,sem_local,,BA,,,,,
