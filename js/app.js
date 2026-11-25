@@ -76,9 +76,9 @@ const APLG = [['bovinocultura', 'Bovinocultura e pecuária', '#8c4a2f'], ['capri
 let APL = [], APLM = new Map(); // APLM: codmun → linhas de apl_municipio
 const aplOf = c => APLM.get(c) || [];
 const APLV = {
-  tem_apl: { l: 'Tem APL (Observatório 2022)', u: '1 = sim', g: 'APL', f: r => APL.length ? (aplOf(r.codmun).length ? 1 : 0) : null },
+  tem_apl: { l: 'Tem APL (Observatório 2022)', u: '1 = sim', g: 'APL', bin: 1, f: r => APL.length ? (aplOf(r.codmun).length ? 1 : 0) : null },
   n_apls: { l: 'Nº de APLs no município', u: 'n', g: 'APL', f: r => APL.length ? aplOf(r.codmun).length : null },
-  ...Object.fromEntries(APLG.map(([k, l]) => ['tem_apl_setor_' + k, { l: 'Tem APL — ' + l.toLowerCase(), u: '1 = sim', g: 'APL', f: r => APL.length ? (aplOf(r.codmun).some(a => a.setor_grupo === k) ? 1 : 0) : null }])),
+  ...Object.fromEntries(APLG.map(([k, l]) => ['tem_apl_setor_' + k, { l: 'Tem APL — ' + l.toLowerCase(), u: '1 = sim', g: 'APL', bin: 1, f: r => APL.length ? (aplOf(r.codmun).some(a => a.setor_grupo === k) ? 1 : 0) : null }])),
 };
 Object.assign(V, APLV);
 // Nº de aptos por critério (seção 5, aba 3)
@@ -129,7 +129,7 @@ function ImovelFilters(el, onChange) {
 // ---------- filtros municipais ----------
 function FilterList(el, keys, onChange, title, single) {
   let rows = [];
-  const rowHTML = (f, i) => { const v = V[f.v]; return `<div class="fr" data-i="${i}"><select data-k="v">${varOptions(keys, f.v)}</select>${v.ag ? `<select data-k="ag" aria-label="Agrupamento">${agOptions(f.ag, v.ag)}</select>` : ''}<select data-k="op">${Object.entries(OPS).map(([k, l]) => opt(k, l, k === f.op)).join('')}</select><input type="number" data-k="x" value="${f.x ?? ''}" step="any"><span class="u">${esc(v.u)}</span>${single ? '' : `<button class="x" data-rm="${i}" aria-label="Remover condição">×</button>`}<span class="imp" data-imp></span></div>` };
+  const rowHTML = (f, i) => { const v = V[f.v]; return `<div class="fr" data-i="${i}"><select data-k="v">${varOptions(keys, f.v)}</select>${v.ag ? `<select data-k="ag" aria-label="Agrupamento">${agOptions(f.ag, v.ag)}</select>` : ''}${v.bin ? `<select data-k="bin" aria-label="Sim ou não">${opt('1', 'Sim', f.x !== 0)}${opt('0', 'Não', f.x === 0)}</select>` : `<select data-k="op">${Object.entries(OPS).map(([k, l]) => opt(k, l, k === f.op)).join('')}</select><input type="number" data-k="x" value="${f.x ?? ''}" step="any"><span class="u">${esc(v.u)}</span>`}${single ? '' : `<button class="x" data-rm="${i}" aria-label="Remover condição">×</button>`}<span class="imp" data-imp></span></div>` };
   const draw = () => { el.innerHTML = (title ? `<div class="hint">${title}</div>` : '') + rows.map(rowHTML).join('') + (single ? '' : '<div><button class="btn add" data-add>+ Adicionar condição</button></div>') };
   const api = {
     on: !single, get: () => !api.on ? [] : rows.filter(f => f.x !== '' && f.x != null && isFinite(f.x)),
@@ -139,7 +139,9 @@ function FilterList(el, keys, onChange, title, single) {
   el.addEventListener('click', e => { if (e.target.dataset.add != null) { rows.push({ v: keys[0], ag: '', op: '>', x: null }); draw() } else if (e.target.dataset.rm != null) { rows.splice(+e.target.dataset.rm, 1); draw(); onChange() } });
   el.addEventListener('change', e => {
     const d = e.target.closest('[data-i]'); if (!d) return; const f = rows[+d.dataset.i], k = e.target.dataset.k;
-    if (k === 'v') { f.v = e.target.value; f.ag = ''; draw() } else if (k === 'ag') f.ag = e.target.value; else if (k === 'op') f.op = e.target.value; onChange()
+    const setBin = sim => { f.op = sim ? '>=' : '<='; f.x = sim ? 1 : 0 };
+    if (k === 'v') { const era = V[f.v]?.bin; f.v = e.target.value; f.ag = ''; if (V[f.v].bin) setBin(true); else if (era) { f.op = '>'; f.x = null } draw() }
+    else if (k === 'ag') f.ag = e.target.value; else if (k === 'op') f.op = e.target.value; else if (k === 'bin') setBin(e.target.value === '1'); onChange()
   });
   el.addEventListener('input', e => { if (e.target.dataset.k !== 'x') return; const d = e.target.closest('[data-i]'); rows[+d.dataset.i].x = e.target.value === '' ? null : +e.target.value; onChange() });
   draw(); return api;
@@ -232,7 +234,7 @@ function legendHTML(o) {
   if (o.hatch) h += `<div><i style="background:repeating-linear-gradient(45deg,var(--ink) 0 1.5px,transparent 1.5px 5px)"></i>hachura: ${esc(o.hatchLabel)} <span class="u">(${[...o.hatch].filter(c => o.inSet.has(c)).length})</span></div>`;
   return h + biomaLeg()
 }
-const flabel = fs => fs.map(f => `${V[f.v].l}${f.ag ? ' — ' + AG[f.ag] : ''} ${OPS[f.op]} ${fmt(f.x)} ${V[f.v].u}`).join(' e ');
+const flabel = fs => fs.map(f => V[f.v].bin ? `${V[f.v].l}: ${f.x ? 'sim' : 'não'}` : `${V[f.v].l}${f.ag ? ' — ' + AG[f.ag] : ''} ${OPS[f.op]} ${fmt(f.x)} ${V[f.v].u}`).join(' e ');
 
 // ---------- construtor de mapas ----------
 let MBID = 0;
