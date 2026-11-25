@@ -70,7 +70,7 @@ const USOS=[['a','Agricultura','#E974ED'],['p','Pastagem','#EDDE8E'],['m','Mosai
 const DEF_USO=new Set([0,1,2]); // definição de Pedro (24/11, 20h): agricultura + pastagem + mosaico, fixa
 const z4=()=>[0,0,0,0];
 function aggImoveis(fi,cods){
- const c=IM.cols,w=IM.w,by=new Map(),tip=IM.tip.map(()=>({n:0,area:0,deg:0,elig:0,u:z4(),f:z4()})),ar=Array(6).fill(0),rf=Array(5).fill(0),uso=fi?fi.uso:DEF_USO,UA=USOS.map(u=>c['u'+u[0]]),UF=USOS.map(u=>c['f'+u[0]]);
+ const c=IM.cols,w=IM.w,by=new Map(),tip=IM.tip.map(()=>({n:0,area:0,deg:0,elig:0,u:z4(),f:z4()})),ar=Array(6).fill(0),rf=Array(5).fill(0),arN=Array(6).fill(0),rfN=Array(5).fill(0),uso=fi?fi.uso:DEF_USO,UA=USOS.map(u=>c['u'+u[0]]),UF=USOS.map(u=>c['f'+u[0]]);
  for(let i=0;i<c.m.length;i++){
   const t=c.t[i];if(cods&&!cods.has(c.m[i]))continue;
   let dg=0;for(const u of uso)dg+=UF[u][i];
@@ -81,9 +81,9 @@ function aggImoveis(fi,cods){
   o.n+=k;o.area+=k*c.a[i];o.deg+=k*dg;if(c.ok[i]){o.elig+=k*dg;o.apt+=k}
   const T=tip[t];T.n+=k;T.area+=k*c.a[i];T.deg+=k*dg;if(c.ok[i])T.elig+=k*dg;
   for(let u=0;u<4;u++){const a=k*UA[u][i],f=k*UF[u][i];o.u[u]+=a;o.f[u]+=f;T.u[u]+=a;T.f[u]+=f}
-  ar[c.ar[i]]+=k*c.a[i];rf[c.rf[i]]+=k*c.a[i];
+  ar[c.ar[i]]+=k*c.a[i];rf[c.rf[i]]+=k*c.a[i];arN[c.ar[i]]+=k;rfN[c.rf[i]]+=k;
  }
- return{by,tip,ar,rf,uso};
+ return{by,tip,ar,rf,arN,rfN,uso};
 }
 const TIPG=[['af','Agricultura familiar',[0,1,2,3]],['hib','Grupo híbrido',[4,5]],['eco','Potencial Eco Invest',[6,7]]];
 const ARG=[['up','Aumentou a aridez',[[0,'A','já estava em ASD'],[1,'B','entrou na ASD']]],['eq','Estável',[[2,'C','em ASD'],[3,'D','fora da ASD']]],['dn','Diminuiu a aridez',[[4,'E','segue em ASD'],[5,'F','saiu da ASD']]]];
@@ -93,12 +93,12 @@ function ImovelFilters(el,onChange){
  const grp=(cls,gk,label,items,name)=>`<div class="grp g-${cls}"><label><input type="checkbox" data-grp="${gk}" checked> ${label}</label><div class="chk">${items.map(([i,l,sm])=>`<label><input type="checkbox" data-g="${name}" data-gr="${gk}" value="${i}" checked> ${esc(l)}${sm?` <small>${esc(sm)}</small>`:''}</label>`).join('')}</div></div>`;
  el.innerHTML=`<fieldset class="sg"><legend>Salvaguardas e elegibilidade (Eco Invest)</legend><div class="seg" role="group" aria-label="Salvaguardas e elegibilidade">${[['s','Elegíveis'],['n','Não elegíveis'],['t','Todos']].map(([k,l])=>`<button type="button" data-apt="${k}" aria-pressed="${k==='t'}">${l}</button>`).join('')}</div><p class="hint">Elegível = apto em todos os critérios de salvaguarda (status do CAR, desmatamento, embargos, florestas públicas, UC, TI/TQ).</p></fieldset>
  <div class="maps2">
- <fieldset><legend>Tipologia</legend>${TIPG.map(([k,l,ix])=>grp(k,'t-'+k,l,ix.map(i=>[i,IM.tip[i]]),'tip')).join('')}</fieldset>
- <fieldset><legend>Dinâmica da aridez (ASD = área suscetível à desertificação)</legend>${ARG.map(([k,l,it])=>grp(k,'a-'+k,l,it.map(([i,c,d])=>[i,c,d]),'ar')).join('')}
+ <fieldset><legend>Tipologia<button type="button" class="info" data-fig="tip">ⓘ Como foi classificado</button></legend>${TIPG.map(([k,l,ix])=>grp(k,'t-'+k,l,ix.map(i=>[i,IM.tip[i]]),'tip')).join('')}</fieldset>
+ <fieldset><legend>Dinâmica da aridez (ASD = área suscetível à desertificação)<button type="button" class="info" data-fig="ar">ⓘ Mapa</button></legend>${ARG.map(([k,l,it])=>grp(k,'a-'+k,l,it.map(([i,c,d])=>[i,c,d]),'ar')).join('')}
  <div class="quick"><button data-q="asd">Só em ASD hoje (A, B, C, E)</button><button data-q="noasd">Só fora de ASD (D, F)</button><button data-q="all">Todas</button></div></fieldset>
- <fieldset><legend>Risco fundiário</legend><div class="chk" style="display:grid;gap:4px">${RFL.map(([l,d],i)=>`<label><input type="checkbox" data-g="rf" value="${i}" checked> ${l} <small>(${esc(d)})</small></label>`).join('')}</div></fieldset>
+ <fieldset><legend>Risco fundiário<button type="button" class="info" data-fig="rf">ⓘ Como foi classificado</button></legend><div class="chk" style="display:grid;gap:4px">${RFL.map(([l,d],i)=>`<label><input type="checkbox" data-g="rf" value="${i}" checked> ${l} <small>(${esc(d)})</small></label>`).join('')}</div></fieldset>
  <fieldset><legend>Uso da terra (% da área do imóvel)</legend><div class="uf">${USOS.map(([k,l,col],u)=>`<div class="urow"><span><span class="dot" style="--bc:${col}"></span>${l}</span><div class="seg" role="group" aria-label="Filtro de ${l}">${[['none','Sem filtro'],['>=','≥'],['<=','≤']].map(([v,t])=>`<button type="button" data-u="${u}" data-uop="${v}" aria-pressed="${v==='none'}">${t}</button>`).join('')}</div><input type="number" data-upx="${u}" min="0" max="100" placeholder="%" disabled><span class="u">% do imóvel</span></div>`).join('')}</div></fieldset>
- <fieldset><legend>Área potencialmente degradada</legend>
+ <fieldset><legend>Área potencialmente degradada<button type="button" class="info" data-fig="deg">ⓘ Como foi classificado</button></legend>
  <div class="fr">Área potencialmente degradada ≥ <input type="number" data-k="degmin" min="0" placeholder="ha"><span class="u">ha</span></div>
  <div><button class="clr" data-reset style="--bc:#4f6b55">Limpar filtros de imóvel</button></div></fieldset></div>`;
  const up=[null,null,null,null];const setUp=(u,op)=>{el.querySelectorAll(`[data-u="${u}"]`).forEach(b=>b.setAttribute('aria-pressed',b.dataset.uop===op));const inp=el.querySelector(`[data-upx="${u}"]`);inp.disabled=op==='none';if(op==='none'){inp.value='';up[u]=null}else up[u]={op,x:inp.value===''?null:+inp.value}};
@@ -292,14 +292,53 @@ function sicor(){
 
 // ---------- aba 3 ----------
 let geoF,geoAgg;
-function geo(){
- const fi=geoF.get();geoAgg=aggImoveis(fi,null);const st=aggImoveis(fi,new Set(universe()));let n=0,a=0,d=0,e=0;
- for(const o of st.by.values()){n+=o.n;a+=o.area;d+=o.deg;e+=o.elig}
- $('k-geo').innerHTML=kpi(nf0.format(n),'Imóveis na seleção')+kpi(nf0.format(a)+' ha','Área dos imóveis')+kpi(nf0.format(d)+' ha','Área potencialmente degradada')+kpi(nf0.format(e)+' ha','Degradada em imóveis elegíveis');
- tipTable($('tip-geo'),st.tip,st.uso);usoBlock(st);
- const ar=st.ar,am=Math.max(...ar,1),AC=['#b5543a','#b5543a','#8a8f8c','#8a8f8c','#3d6e8f','#3d6e8f'];$('ar-geo').innerHTML=ARL.map((l,i)=>bar(l,100*ar[i]/am,nf0.format(ar[i])+' ha',AC[i])).join('');
- const rf=st.rf,rm=Math.max(...rf,1);$('rf-geo').innerHTML=RFL.map(([l,d],i)=>bar(`${l} (${d})`,100*rf[i]/rm,nf0.format(rf[i])+' ha')).join('');
+const T4=[['Alagoas',1321078,1.5],['Bahia',35135735,40.7],['Ceará',14886858,17.3],['Minas Gerais',3260954,3.8],['Paraíba',5235875,6.1],['Pernambuco',8258865,9.6],['Piauí',11873378,13.8],['Rio Grande do Norte',5074649,5.9],['Sergipe',1213721,1.4]];
+const T7C=[['Vegetação nativa','#1F8D49'],['Pastagem','#EDDE8E'],['Agricultura','#E974ED'],['Mosaico de usos','#FFEFC3'],['Não vegetado','#bdbdbd'],['Massa d’água','#2f6fb0']];
+const T7=[['Alagoas',340311,930423,6696,19256,11440,12949],['Bahia',21056124,11139103,416753,1768315,299026,456393],['Ceará',10071953,3194065,576690,538910,264930,240317],['Minas Gerais',1634534,1476670,71916,31617,22685,23538],['Paraíba',3010055,1996858,19989,104138,57685,47149],['Pernambuco',5107962,2611486,174316,165352,100206,99536],['Piauí',9894872,1476507,125757,258302,88006,29938],['Rio Grande do Norte',2722478,1461214,407525,257994,113684,111757],['Sergipe',277809,817535,92248,7667,9084,9383]];
+const TIPC=['#1a5e34','#2f7d4a','#4f9a63','#7cb88a','#c4761a','#e0a35a','#2b5f93','#6f9cc8'];
+let pieM='n',arrfM='area';
+function bioma(){
+ const s4=[...T4].sort((a,b)=>b[1]-a[1]);$('t4').innerHTML=s4.map(([u,a,p])=>bar(u,100*a/s4[0][1],`${nf.format(p)}% · ${nf.format(a/1e6)} mi ha`)).join('');
+ $('t7bars').innerHTML=[...T7].sort((a,b)=>b.slice(1).reduce((x,y)=>x+y)-a.slice(1).reduce((x,y)=>x+y)).map(r=>{const t=r.slice(1).reduce((x,y)=>x+y);return `<div class="row"><span>${r[0]}</span><div class="track">${r.slice(1).map((v,i)=>`<i title="${T7C[i][0]}: ${nf0.format(v)} ha (${pc(v,t)})" style="width:${100*v/t}%;background:${T7C[i][1]}"></i>`).join('')}</div><span class="v">${pc(r[2],t)} pasto</span></div>`}).join('');
+ const tot=T7C.map((_,i)=>T7.reduce((a,r)=>a+r[i+1],0)),G=tot.reduce((a,b)=>a+b);
+ $('t7').innerHTML='<thead><tr><th>UF</th>'+T7C.map(c=>`<th>${c[0]}</th>`).join('')+'<th>Total</th></tr></thead><tbody>'+T7.map(r=>`<tr><td>${r[0]}</td>${r.slice(1).map(v=>`<td>${nf0.format(v)}</td>`).join('')}<td>${nf0.format(r.slice(1).reduce((a,b)=>a+b))}</td></tr>`).join('')+`<tr class="sel"><td>Total</td>${tot.map(v=>`<td>${nf0.format(v)}</td>`).join('')}<td>${nf0.format(G)}</td></tr></tbody>`;
 }
+function geo(){
+ const fi=geoF.get(),cods=new Set(universe());geoAgg=aggImoveis(fi,null);const st=aggImoveis(fi,cods);
+ const all={tip:new Set(IM.tip.keys()),ar:new Set([0,1,2,3,4,5]),rf:new Set([0,1,2,3,4]),uso:DEF_USO,degmin:null,apt:'t'},s0=aggImoveis(all,cods);
+ const sum=a=>{let n=0,area=0,deg=0;for(const o of a.by.values()){n+=o.n;area+=o.area;deg+=o.deg}return{n,area,deg}},A=sum(s0),B=sum(st);
+ const card=(l,k,u)=>`<div class="kc"><span class="l">${l}</span><b>${nf0.format(B[k])}${u}</b><div class="f">${UF||'Caatinga'} ${nf0.format(A[k])} → filtros <em>${pc(B[k],A[k])}</em></div></div>`;
+ $('k-geo').innerHTML=card('Imóveis (CAR)','n','')+card('Área dos imóveis','area',' ha')+card('Área pot. degradada','deg',' ha')+`<div class="kc"><span class="l">% da área degradada</span><b>${pc(B.deg,B.area)}</b><div class="f">agricultura + pastagem + mosaico</div></div>`;
+ const ff=fi,ch=[];const off=(set,n,labs,name)=>set.size<n?`<span class="chip" style="--bc:#c4761a">${name}: ${[...set].sort().map(i=>labs[i]).join(', ')||'nenhum'}</span>`:'';
+ ch.push(off(ff.tip,8,IM.tip,'Tipologias'),off(ff.ar,6,IM.ar,'Aridez'),off(ff.rf,5,RFL.map(r=>r[0]),'Risco'));
+ ff.up.forEach((x,i)=>{if(x)ch.push(`<span class="chip" style="--bc:#c4761a">${USOS[i][1]} ${x.op==='>='?'≥':'≤'} ${fmt(x.x)}% do imóvel</span>`)});
+ if(ff.degmin!=null)ch.push(`<span class="chip" style="--bc:#c4761a">Degradada ≥ ${fmt(ff.degmin)} ha</span>`);
+ if(ff.apt!=='t')ch.push(`<span class="chip" style="--bc:#c4761a">${ff.apt==='s'?'Só elegíveis':'Só não elegíveis'}</span>`);
+ $('chips-geo').innerHTML=ch.join('')||'<span class="hint">Sem filtros de imóvel: todos os imóveis.</span>';
+ tipUsoTable($('tip-geo'),st.tip);pie(st.tip);usoBlock(st);
+ const isA=arrfM==='area',un=isA?' ha':'';$('ar-t').textContent=(isA?'Área':'Nº de CAR')+' por classe de aridez';$('rf-t').textContent=(isA?'Área':'Nº de CAR')+' por risco fundiário';
+ const ar=isA?st.ar:st.arN,am=Math.max(...ar,1),AC=['#b5543a','#b5543a','#8a8f8c','#8a8f8c','#3d6e8f','#3d6e8f'],at=ar.reduce((a,b)=>a+b,0);$('ar-geo').innerHTML=ARL.map((l,i)=>bar(l,100*ar[i]/am,`${nf0.format(ar[i])}${un} · ${pc(ar[i],at)}`,AC[i])).join('');
+ const rf=isA?st.rf:st.rfN,rm=Math.max(...rf,1),rt=rf.reduce((a,b)=>a+b,0);$('rf-geo').innerHTML=RFL.map(([l,d],i)=>bar(`${l} (${d})`,100*rf[i]/rm,`${nf0.format(rf[i])}${un} · ${pc(rf[i],rt)}`)).join('');
+}
+function tipUsoTable(el,t){const add=(a,x)=>({n:a.n+x.n,area:a.area+x.area,u:a.u.map((v,i)=>v+x.u[i])}),Z={n:0,area:0,u:z4()},T=t.reduce(add,Z);
+ const tr=(l,x,c='',st='')=>`<tr${c}${st}><td>${l}</td><td>${nf0.format(x.n)}</td><td>${nf0.format(x.area)}</td>${x.u.map(v=>`<td>${nf0.format(v)}</td>`).join('')}</tr>`;
+ const CL={af:'#4f6b55',hib:'#c4761a',eco:'#3d6e8f'};
+ el.innerHTML=`<thead><tr><th>Tipologia</th><th>Imóveis</th><th>Área (ha)</th>${USOS.map(([k,l,col])=>`<th><span class="dot" style="--bc:${col}"></span>${l} (ha)</th>`).join('')}</tr></thead><tbody>`+
+  TIPG.map(([k,l,ix])=>tr(`<span class="dot"></span>Subtotal ${l}`,ix.reduce((a,i)=>add(a,t[i]),Z),' class="gt"',` style="--bc:${CL[k]}"`)+ix.map(i=>tr('&nbsp;&nbsp;&nbsp;&nbsp;'+IM.tip[i],t[i])).join('')).join('')+tr('Total',T,' class="sel"')+'</tbody>'}
+function pie(t){const v=t.map(x=>pieM==='n'?x.n:x.area),T=v.reduce((a,b)=>a+b,0)||1;let a0=-Math.PI/2,g='';
+ v.forEach((x,i)=>{const a1=a0+2*Math.PI*x/T,lg=a1-a0>Math.PI?1:0,p=(a)=>`${(100*Math.cos(a)).toFixed(2)},${(100*Math.sin(a)).toFixed(2)}`;if(x>0)g+=x>=T?`<circle r="100" fill="${TIPC[i]}"/>`:`<path d="M0,0L${p(a0)}A100,100 0 ${lg} 1 ${p(a1)}Z" fill="${TIPC[i]}" stroke="var(--bg)" stroke-width="1"><title>${IM.tip[i]}: ${pc(x,T)}</title></path>`;a0=a1});
+ $('pie-geo').innerHTML=g;$('pie-leg').innerHTML=IM.tip.map((l,i)=>`<div><i style="background:${TIPC[i]}"></i>${l} <span class="u">${pc(v[i],T)}</span></div>`).join('')}
+// pop-ups com figuras do Relatório 2
+const FIG={tip:{t:'Classificação dos imóveis por tipologia',cap:'Figura 45. Árvore de classificação dos imóveis (Relatório 2, p. 79). Cada cadastro recebe uma só tipologia: a do primeiro critério atendido.',img:'assets/fig45_arvore_tipologia.png',dl:'assets/fig46_mapa_tipologia.png',dlt:'Baixar Figura 46 (mapa do CAR por tipologia)'},
+ ar:{t:'Dinâmica da aridez e ASD',cap:'Figura 51. Distribuição espacial das classes A–F de dinâmica da aridez e enquadramento climático como ASD no bioma Caatinga (Relatório 2, p. 107).',img:'assets/fig51_mapa_aridez.png',dl:'assets/fig51_mapa_aridez.png',dlt:'Baixar Figura 51'},
+ rf:{t:'Classificação do risco fundiário',cap:'Figura 50. Árvore de classificação do risco fundiário (Relatório 2, p. 102).',img:'assets/fig50_arvore_risco.png',dl:'assets/fig50_arvore_risco.png',dlt:'Baixar Figura 50'},
+ deg:{t:'Área potencialmente degradada',cap:'Quadro 3. Resumo dos critérios aplicados na estimativa de áreas potencialmente degradadas (Relatório 2, p. 88).',html:`<table><thead><tr><th>Uso da terra no MapBiomas</th><th>Classificação</th><th>Regra</th></tr></thead><tbody><tr><td>Pastagem</td><td>Degradada</td><td style="white-space:normal;text-align:left">Degradação intermediária ou severa no LAPIG em pelo menos quatro dos cinco anos entre 2019 e 2023.</td></tr><tr><td>Pastagem</td><td>Não degradada</td><td style="white-space:normal;text-align:left">Não atende ao critério de persistência temporal do LAPIG.</td></tr><tr><td>Demais usos</td><td>Degradado</td><td style="white-space:normal;text-align:left">Ocorrência de nível 3, 4 ou 5 do LDI.</td></tr><tr><td>Demais usos</td><td>Não degradado</td><td style="white-space:normal;text-align:left">Categoria conservada ou níveis 1 ou 2 do LDI.</td></tr></tbody></table><p class="hint" style="margin-top:12px">No BI, a área potencialmente degradada soma agricultura + pastagem + mosaico de usos (definição de 24/11/2026).</p>`}};
+function openFig(k){const f=FIG[k];$('fig-t').textContent=f.t;$('fig-cap').textContent=f.cap;
+ $('fig-body').innerHTML=f.html||`<img src="${f.img}" alt="${esc(f.cap)}">`;
+ const im=$('fig-body').querySelector('img');if(im)im.onerror=()=>{$('fig-body').innerHTML=`<div class="ph-fig">A imagem desta figura entra quando o PDF do Relatório 2 for anexado.<br><b>${esc(f.cap)}</b></div>`};
+ const dl=$('fig-dl');dl.hidden=!f.dl;if(f.dl){dl.href=f.dl;dl.textContent=f.dlt}
+ $('fig-ov').hidden=false;$('fig-x').focus()}
+const figClose=()=>{$('fig-ov').hidden=true;document.querySelector('.figm').classList.remove('full');$('fig-ov').classList.remove('fig-ov-full');$('fig-exp').textContent='Expandir'};
 function tipTable(el,t,uso){const add=(a,x)=>({n:a.n+x.n,area:a.area+x.area,deg:a.deg+x.deg,elig:a.elig+x.elig,f:a.f.map((v,i)=>v+x.f[i])}),Z={n:0,area:0,deg:0,elig:0,f:z4()},T=t.reduce(add,Z);
  const us=[...uso].sort();
  const tr=(l,x,c='',st='')=>`<tr${c}${st}><td>${l}</td><td>${nf0.format(x.n)}</td><td>${nf0.format(x.area)}</td><td>${nf0.format(x.deg)}</td>${us.map(u=>`<td>${nf0.format(x.f[u])}</td>`).join('')}<td>${pc(x.deg,T.deg)}</td><td>${pc(x.deg,x.area)}</td><td>${nf0.format(x.elig)}</td></tr>`;
@@ -380,7 +419,13 @@ Promise.all(['data.json','geo.json','imoveis_simulados.json'].map(f=>fetch(f).th
  $('uf').onchange=()=>{UF=$('uf').value;renderAll()};
  document.querySelectorAll('[role=tab]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[role=tab]').forEach(x=>x.setAttribute('aria-selected',x===b));
   document.querySelectorAll('.pane').forEach(p=>p.hidden=p.id!=='p-'+b.dataset.p);renderAll()}));
- document.addEventListener('click',e=>{if(e.target.closest('[data-pts]')){PTS_ON=!PTS_ON;renderAll()}});
+ document.addEventListener('click',e=>{if(e.target.closest('[data-pts]')){PTS_ON=!PTS_ON;renderAll()}
+  const fb=e.target.closest('[data-fig]');if(fb){e.preventDefault();openFig(fb.dataset.fig)}
+  const pb=e.target.closest('[data-pie]');if(pb){pieM=pb.dataset.pie;document.querySelectorAll('[data-pie]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.pie===pieM));geo()}
+  const ab=e.target.closest('[data-arrf]');if(ab){arrfM=ab.dataset.arrf;document.querySelectorAll('[data-arrf]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.arrf===arrfM));geo()}});
+ $('fig-x').onclick=figClose;$('fig-ov').addEventListener('click',e=>{if(e.target.id==='fig-ov')figClose()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('fig-ov').hidden)figClose()});
+ $('fig-exp').onclick=()=>{const m=document.querySelector('.figm'),f=m.classList.toggle('full');$('fig-ov').classList.toggle('fig-ov-full',f);$('fig-exp').textContent=f?'Reduzir':'Expandir'};
+ bioma();
  renderAll();
 }).catch(e=>{document.querySelector('main').textContent='Não foi possível carregar os dados: '+e.message});
 }

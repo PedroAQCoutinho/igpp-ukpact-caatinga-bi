@@ -314,3 +314,23 @@ Se o tempo apertar, **corte nesta ordem**: mapa do bioma, Jenks, console SQL ava
 - **Tabela:** `apl_municipio(codmun, apl_id, nome_apl, setor, uf, fonte, ano_ref)`, muitos-para-muitos, recortada para os municípios da base.
 - **Variáveis municipais** para recorte e hachura: `tem_apl`, `tem_apl_setor_<x>` e `n_apls`.
 - **Mapa categórico estático:** seção "Arranjos já existentes" na aba 4, abaixo da tabela por tipologia, colorida por setor, com a lista dos APLs.
+
+## 13. Aba Geo para apresentar as seções 2.2 e 2.3 do Relatório 2 (Pedro, 25/11/2026)
+
+O protótipo foi atualizado (v10). Mudanças na aba 3:
+
+1. **"O bioma Caatinga por UF"**, no topo, com valores fixos do relatório que não mudam com os filtros:
+   - **Tabela 4** (participação de cada UF no bioma) em barras, com % e milhões de ha;
+   - **Tabela 7** (uso da terra por UF) em barras 100% com as cores MapBiomas, e a tabela completa num `<details>`.
+2. **Painel lateral fixo:** filtros à esquerda e, à direita (sticky), etiquetas dos filtros ativos e quatro cards. Os cards são imóveis, área dos imóveis e área potencialmente degradada, cada um com "Caatinga/UF → filtros (%)", mais o % da área degradada.
+3. **Ordem da aba:** bioma → filtros e cards → **construtor de mapas** → uso da terra → seleção por tipologia → aridez e risco.
+4. **Pop-ups "ⓘ"** nos cards de filtro, com botão **Expandir** (tela inteira) e **Baixar figura**:
+   - **Tipologia:** Figura 45 (árvore de classificação) e download da **Figura 46** (mapa do CAR por tipologia);
+   - **Dinâmica da aridez:** Figura 51 (mapa das classes A–F e ASD);
+   - **Risco fundiário:** Figura 50 (árvore de classificação);
+   - **Área potencialmente degradada:** Quadro 3 em HTML, mais a nota da definição do BI.
+   - **Imagens:** `assets/fig45_arvore_tipologia.png`, `fig46_mapa_tipologia.png`, `fig50_arvore_risco.png` e `fig51_mapa_aridez.png`, recortadas do PDF do Relatório 2 (páginas 79, 83, 102 e 107). Enquanto não existirem, o pop-up mostra um aviso.
+5. **Aridez e risco fundiário:** alternância **Área (ha) | Nº de CAR**, com %.
+6. **Seleção por tipologia:**
+   - a tabela mostra **a área de cada uso** (agricultura, pastagem, mosaico, vegetação nativa), com subtotais por grupo, e **não** a área degradada (esta fica na aba 4);
+   - ao lado, uma **pizza** por tipologia, com alternância Nº de CAR | Área, em tons por grupo (verdes = agricultura familiar, laranjas = híbrido, azuis = potencial Eco Invest).
