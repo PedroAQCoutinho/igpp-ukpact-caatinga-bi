@@ -62,6 +62,13 @@ export async function init() {
     await conn.query(`CREATE TABLE geo_mun_resumo AS SELECT * FROM read_parquet('geo_mun_resumo.parquet')`);
     status.resumo = true;
   }
+  // Arranjos citados nas entrevistas (seção 12.1): CSV versionado, lido como texto (codmun com 7 dígitos)
+  const PTS_CSV = 'data/arranjos_pontos_v1_20261125.csv';
+  if (await exists(PTS_CSV)) {
+    await reg('arranjos_pontos.csv', PTS_CSV);
+    await conn.query(`CREATE TABLE arranjos_pontos AS SELECT * FROM read_csv('arranjos_pontos.csv', header=true, all_varchar=true)`);
+    status.pontos = true;
+  }
   if (await exists('data/local/imoveis.parquet')) {
     try {
       await reg('imoveis.parquet', 'data/local/imoveis.parquet');

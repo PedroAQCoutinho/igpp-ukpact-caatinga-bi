@@ -95,7 +95,7 @@ async function schema(el) {
   const dic = new Map((await q('SELECT coluna, descricao, unidade FROM socio_dicionario')).map(r => [r.coluna, r.descricao + (r.unidade ? ' (' + r.unidade + ')' : '')]));
   const tabs = (await q(`SELECT table_name FROM information_schema.tables WHERE table_schema='main' ORDER BY 1`)).map(r => r.table_name);
   let h = '';
-  for (const t of ['socio_municipal', 'socio_dicionario', 'imoveis', 'geo_mun_resumo']) {
+  for (const t of ['socio_municipal', 'socio_dicionario', 'imoveis', 'geo_mun_resumo', 'arranjos_pontos']) {
     if (!tabs.includes(t)) { h += `<details><summary><b>${t}</b> <span class="u">(${t === 'imoveis' ? 'falta data/local/imoveis.parquet' : 'não disponível'})</span></summary></details>`; continue }
     const cols = await q(`SELECT column_name AS c, data_type AS t FROM information_schema.columns WHERE table_name='${t}' ORDER BY ordinal_position`);
     const n = (await q(`SELECT count(*) AS n FROM ${t}`))[0].n;

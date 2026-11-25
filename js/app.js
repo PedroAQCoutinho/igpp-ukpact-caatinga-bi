@@ -26,6 +26,9 @@ const METH = { q4: 'Quartis', q5: 'Quintis', q10: 'Decis', eq: 'Intervalos iguai
 const OPS = { '>': '>', '>=': '≥', '<': '<', '<=': '≤' };
 
 let R = [], RM = new Map(), UF = '', UFS = [], POLY = {}, AREA = new Map(), BIOMA = [], BASEAGG = { by: new Map() };
+// Arranjos citados nas entrevistas (seção 12.1): só os pontos com local; liga/desliga único para todos os mapas
+let PTS = [], PTS_ON = false;
+const PCL = { A: '#1a7f3c', B: '#2f6fb0', C: '#c4761a', D: '#7a5a8c' }, PRL = { municipio: 'município citado', municipio_inferido: 'município inferido (conferir)', regiao_aprox: 'região aproximada' };
 
 // ---------- variáveis municipais ----------
 const prA = k => 'pr_ag_' + k + '_rs', crA = k => 'cr_ag_' + k + '_vol_rs';
@@ -81,12 +84,12 @@ function ImovelFilters(el, onChange) {
   const grp = (cls, gk, label, items, name) => `<div class="grp g-${cls}"><label><input type="checkbox" data-grp="${gk}" checked> ${label}</label><div class="chk">${items.map(([i, l, sm]) => `<label><input type="checkbox" data-g="${name}" data-gr="${gk}" value="${i}" checked> ${esc(l)}${sm ? ` <small>${esc(sm)}</small>` : ''}</label>`).join('')}</div></div>`;
   el.innerHTML = `<fieldset class="sg"><legend>Salvaguardas e elegibilidade (Eco Invest)</legend><div class="seg" role="group" aria-label="Salvaguardas e elegibilidade">${[['s', 'Elegíveis'], ['n', 'Não elegíveis'], ['t', 'Todos']].map(([k, l]) => `<button type="button" data-apt="${k}" aria-pressed="${k === 't'}">${l}</button>`).join('')}</div><p class="hint">Elegível = apto em todos os critérios de salvaguarda (status do CAR, desmatamento, embargos, florestas públicas, UC, TI/TQ).</p></fieldset>
  <div class="maps2">
- <fieldset><legend>Tipologia</legend>${TIPG.map(([k, l, ix]) => grp(k, 't-' + k, l, ix.map(i => [i, TIP[i]]), 'tip')).join('')}</fieldset>
- <fieldset><legend>Dinâmica da aridez (ASD = área suscetível à desertificação)</legend>${ARG.map(([k, l, it]) => grp(k, 'a-' + k, l, it.map(([i, c, d]) => [i, c, d]), 'ar')).join('')}
+ <fieldset><legend>Tipologia<button type="button" class="info" data-fig="tip">ⓘ Como foi classificado</button></legend>${TIPG.map(([k, l, ix]) => grp(k, 't-' + k, l, ix.map(i => [i, TIP[i]]), 'tip')).join('')}</fieldset>
+ <fieldset><legend>Dinâmica da aridez (ASD = área suscetível à desertificação)<button type="button" class="info" data-fig="ar">ⓘ Mapa</button></legend>${ARG.map(([k, l, it]) => grp(k, 'a-' + k, l, it.map(([i, c, d]) => [i, c, d]), 'ar')).join('')}
  <div class="quick"><button data-q="asd">Só em ASD hoje (A, B, C, E)</button><button data-q="noasd">Só fora de ASD (D, F)</button><button data-q="all">Todas</button></div></fieldset>
- <fieldset><legend>Risco fundiário</legend><div class="chk" style="display:grid;gap:4px">${RFL.map(([l, d], i) => `<label><input type="checkbox" data-g="rf" value="${i}" checked> ${l} <small>(${esc(d)})</small></label>`).join('')}</div></fieldset>
+ <fieldset><legend>Risco fundiário<button type="button" class="info" data-fig="rf">ⓘ Como foi classificado</button></legend><div class="chk" style="display:grid;gap:4px">${RFL.map(([l, d], i) => `<label><input type="checkbox" data-g="rf" value="${i}" checked> ${l} <small>(${esc(d)})</small></label>`).join('')}</div></fieldset>
  <fieldset><legend>Uso da terra (% da área do imóvel)</legend><div class="uf">${USOS.map(([l, col], u) => `<div class="urow"><span><span class="dot" style="--bc:${col}"></span>${l}</span><div class="seg" role="group" aria-label="Filtro de ${l}">${[['none', 'Sem filtro'], ['>=', '≥'], ['<=', '≤']].map(([v, t]) => `<button type="button" data-u="${u}" data-uop="${v}" aria-pressed="${v === 'none'}">${t}</button>`).join('')}</div><input type="number" data-upx="${u}" min="0" max="100" placeholder="%" disabled><span class="u">% do imóvel</span></div>`).join('')}</div></fieldset>
- <fieldset><legend>Área potencialmente degradada</legend>
+ <fieldset><legend>Área potencialmente degradada<button type="button" class="info" data-fig="deg">ⓘ Como foi classificado</button></legend>
  <div class="fr">Área potencialmente degradada ≥ <input type="number" data-k="degmin" min="0" placeholder="ha"><span class="u">ha</span></div>
  <div><button class="clr" data-reset style="--bc:#4f6b55">Limpar filtros de imóvel</button></div></fieldset></div>`;
   const up = [null, null, null, null];
@@ -160,6 +163,7 @@ function ramp(p, n) { const s = PAL[p][1]; if (n <= 1) return [s[s.length - 1]];
 
 // ---------- desenho do mapa ----------
 let HID = 0;
+const ptsBtn = () => `<button class="ptsbtn" data-pts aria-pressed="${PTS_ON}">${PTS_ON ? '●' : '○'} Arranjos citados nas entrevistas (${PTS.length})</button>`;
 function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors, hatch:Set, unit, title}
   const W = box.clientWidth, H = box.clientHeight; if (!W) return;
   const drawn = o.showOut ? o.cods : o.cods.filter(c => o.inSet.has(c));
@@ -178,16 +182,31 @@ function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors,
   }
   if (o.hatch) for (const c of drawn) if (o.hatch.has(c) && o.inSet.has(c)) g += `<path d="${path(c)}" fill="url(#${id})" fill-rule="evenodd" pointer-events="none"/>`;
   if (BIOMA.length) g += `<path class="bioma" d="${ringsPath(BIOMA)}" pointer-events="none"/>`;
-  box.innerHTML = `<svg role="img" aria-label="${esc(o.title || 'Mapa municipal')}"${o.blank ? ' class="blank"' : ''}>${g}</svg><div class="tip" hidden></div>`;
+  if (PTS_ON) { // pontos nos municípios desenhados (na aba 4, só os do recorte); vários no mesmo município ficam lado a lado
+    const dset = new Set(drawn), grp = {};
+    PTS.forEach((p, i) => { if (dset.has(p.codmun)) (grp[p.codmun] = grp[p.codmun] || []).push(i) });
+    for (const ids of Object.values(grp)) ids.forEach((i, k) => {
+      const p = PTS[i], [x, y] = P([p.lon, p.lat]).split(',').map(Number), n = ids.length, dx = n > 1 ? 7 * Math.cos(2 * Math.PI * k / n) : 0, dy = n > 1 ? 7 * Math.sin(2 * Math.PI * k / n) : 0, col = PCL[p.classe] || '#555', oco = p.prec === 'regiao_aprox';
+      const cx = (x + dx).toFixed(1), cy = (y + dy).toFixed(1);
+      g += `<circle cx="${cx}" cy="${cy}" r="8.5" fill="#fff" pointer-events="none"/><circle data-pt="${i}" cx="${cx}" cy="${cy}" r="6" style="fill:${oco ? '#fff' : col};stroke:${col};stroke-width:${oco ? 2.5 : 1.5};cursor:pointer"/>`;
+    });
+  }
+  box.innerHTML = `<svg role="img" aria-label="${esc(o.title || 'Mapa municipal')}"${o.blank ? ' class="blank"' : ''}>${g}</svg>${PTS.length ? ptsBtn() : ''}<div class="tip" hidden></div>`;
   const tip = box.querySelector('.tip');
   box.querySelector('svg').onmousemove = e => {
+    const pi = e.target.dataset?.pt;
+    if (pi != null) {
+      const p = PTS[+pi], b = box.getBoundingClientRect(); tip.textContent = `${p.org} · classe ${p.classe} · ${p.cadeia} · ${p.local} (${PRL[p.prec] || p.prec}${p.prec !== 'municipio' ? ': ' + p.mun + '/' + p.uf : ''})`; tip.hidden = false;
+      let lx = e.clientX - b.left + 12; if (lx > W - tip.offsetWidth - 4) lx = Math.max(4, e.clientX - b.left - tip.offsetWidth - 12); tip.style.left = lx + 'px'; tip.style.top = (e.clientY - b.top + 12) + 'px'; return
+    }
     const c = e.target.dataset?.c; if (!c) { tip.hidden = true; return } const r = RM.get(c), x = o.vals.get(c), b = box.getBoundingClientRect();
     tip.textContent = `${r.municipio} (${r.uf})${o.blank ? (o.inSet.has(c) ? '' : ' · fora do recorte') : ': ' + (o.inSet.has(c) ? (x == null ? 'sem dado' : fmt(x) + ' ' + o.unit) : 'fora do recorte')}${o.hatch && o.hatch.has(c) ? ' · hachura' : ''}`; tip.hidden = false;
     let lx = e.clientX - b.left + 12; if (lx > W - tip.offsetWidth - 4) lx = e.clientX - b.left - tip.offsetWidth - 12; tip.style.left = lx + 'px'; tip.style.top = (e.clientY - b.top + 12) + 'px'
   };
   box.querySelector('svg').onmouseleave = () => tip.hidden = true;
 }
-const biomaLeg = () => BIOMA.length ? `<div><i style="background:none;border:0;border-top:2px dashed var(--mut);height:0"></i>limite do bioma Caatinga (IBGE 2019)</div>` : '';
+const ptsLeg = () => PTS_ON ? `<div style="margin-top:4px"><b>Arranjos citados nas entrevistas</b></div>` + Object.entries(PCL).map(([k, c]) => `<div><i style="background:${c};border-radius:50%;width:13px"></i>classe ${k}</div>`).join('') + `<div><i style="background:var(--bg);border:2.5px solid var(--mut);border-radius:50%;width:13px"></i>ponto em região aproximada</div>` : '';
+const biomaLeg = () => (BIOMA.length ? `<div><i style="background:none;border:0;border-top:2px dashed var(--mut);height:0"></i>limite do bioma Caatinga (IBGE 2019)</div>` : '') + ptsLeg();
 function legendHTML(o) {
   if (o.blank) { const k = o.cods.filter(c => o.inSet.has(c)).length; return `<b>${esc(o.title)}</b><div><i style="background:var(--blank)"></i>no recorte <span class="u">(${k})</span></div>` + (o.cods.length > k ? `<div><i style="background:var(--out)"></i>fora do recorte <span class="u">(${o.cods.length - k})</span></div>` : '') + biomaLeg() }
   const n = o.breaks.length + 1, cnt = Array(n).fill(0); let nd = 0, z = 0, out = 0;
@@ -318,20 +337,78 @@ function sicor() {
 
 // ---------- aba 3 ----------
 let geoF, geoAgg = { by: new Map() };
+const SEM_F = () => ({ tip: new Set(TIP.keys()), ar: new Set(AR.keys()), rf: new Set(RF.keys()), up: [null, null, null, null], degmin: null, apt: 't' });
+// Etiquetas dos filtros de imóvel ativos (abas 3 e 4)
+function imovelChips(fi) {
+  const ch = [], off = (set, n, labs, name) => set.size < n ? `<span class="chip" style="--bc:#c4761a">${name}: ${[...set].sort().map(i => labs[i]).join(', ') || 'nenhum'}</span>` : '';
+  ch.push(off(fi.tip, 8, TIP, 'Tipologias'), off(fi.ar, 6, AR, 'Aridez'), off(fi.rf, 5, RFL.map(r => r[0]), 'Risco'));
+  fi.up.forEach((x, i) => { if (x) ch.push(`<span class="chip" style="--bc:#c4761a">${USOS[i][0]} ${x.op === '>=' ? '≥' : '≤'} ${fmt(x.x)}% do imóvel</span>`) });
+  if (fi.degmin != null) ch.push(`<span class="chip" style="--bc:#c4761a">Degradada ≥ ${fmt(fi.degmin)} ha</span>`);
+  if (fi.apt !== 't') ch.push(`<span class="chip" style="--bc:#c4761a">${fi.apt === 's' ? 'Só elegíveis' : 'Só não elegíveis'}</span>`);
+  return ch.filter(Boolean);
+}
+// Tabelas 4 e 7 do Relatório 2 (valores fixos, não mudam com os filtros)
+const T4 = [['Alagoas', 1321078, 1.5], ['Bahia', 35135735, 40.7], ['Ceará', 14886858, 17.3], ['Minas Gerais', 3260954, 3.8], ['Paraíba', 5235875, 6.1], ['Pernambuco', 8258865, 9.6], ['Piauí', 11873378, 13.8], ['Rio Grande do Norte', 5074649, 5.9], ['Sergipe', 1213721, 1.4]];
+const T7C = [['Vegetação nativa', '#1F8D49'], ['Pastagem', '#EDDE8E'], ['Agricultura', '#E974ED'], ['Mosaico de usos', '#FFEFC3'], ['Não vegetado', '#bdbdbd'], ['Massa d’água', '#2f6fb0']];
+const T7 = [['Alagoas', 340311, 930423, 6696, 19256, 11440, 12949], ['Bahia', 21056124, 11139103, 416753, 1768315, 299026, 456393], ['Ceará', 10071953, 3194065, 576690, 538910, 264930, 240317], ['Minas Gerais', 1634534, 1476670, 71916, 31617, 22685, 23538], ['Paraíba', 3010055, 1996858, 19989, 104138, 57685, 47149], ['Pernambuco', 5107962, 2611486, 174316, 165352, 100206, 99536], ['Piauí', 9894872, 1476507, 125757, 258302, 88006, 29938], ['Rio Grande do Norte', 2722478, 1461214, 407525, 257994, 113684, 111757], ['Sergipe', 277809, 817535, 92248, 7667, 9084, 9383]];
+const TIPC = ['#1a5e34', '#2f7d4a', '#4f9a63', '#7cb88a', '#c4761a', '#e0a35a', '#2b5f93', '#6f9cc8'];
+let pieM = 'n', arrfM = 'area';
+function bioma() {
+  const sumR = r => r.slice(1).reduce((x, y) => x + y, 0), s4 = [...T4].sort((a, b) => b[1] - a[1]);
+  $('t4').innerHTML = s4.map(([u, a, p]) => bar(u, 100 * a / s4[0][1], `${nf.format(p)}% · ${nf.format(a / 1e6)} mi ha`)).join('');
+  $('t7bars').innerHTML = [...T7].sort((a, b) => sumR(b) - sumR(a)).map(r => { const t = sumR(r); return `<div class="row"><span>${r[0]}</span><div class="track">${r.slice(1).map((v, i) => `<i title="${T7C[i][0]}: ${nf0.format(v)} ha (${pc(v, t)})" style="width:${100 * v / t}%;background:${T7C[i][1]}"></i>`).join('')}</div><span class="v">${pc(r[2], t)} pasto</span></div>` }).join('');
+  const tot = T7C.map((_, i) => T7.reduce((a, r) => a + r[i + 1], 0)), G = tot.reduce((a, b) => a + b, 0);
+  $('t7').innerHTML = '<thead><tr><th>UF</th>' + T7C.map(c => `<th>${c[0]}</th>`).join('') + '<th>Total</th></tr></thead><tbody>' + T7.map(r => `<tr><td>${r[0]}</td>${r.slice(1).map(v => `<td>${nf0.format(v)}</td>`).join('')}<td>${nf0.format(sumR(r))}</td></tr>`).join('') + `<tr class="sel"><td>Total</td>${tot.map(v => `<td>${nf0.format(v)}</td>`).join('')}<td>${nf0.format(G)}</td></tr></tbody>`;
+}
 async function geo() {
   if (!status.imoveis) return;
-  const fi = geoF.get(), a = await aggAll(fi); if (a === undefined) return; geoAgg = a;
-  const uni = new Set(universe()); let n = 0, ar = 0, d = 0, e = 0;
-  for (const [c, o] of a.by) if (uni.has(c)) { n += o.n; ar += o.area; d += o.deg; e += o.elig }
-  $('k-geo').innerHTML = kpi(nf0.format(n), 'Imóveis na seleção') + kpi(nf0.format(ar) + ' ha', 'Área dos imóveis') + kpi(nf0.format(d) + ' ha', 'Área potencialmente degradada') + kpi(nf0.format(e) + ' ha', 'Degradada em imóveis elegíveis');
-  const st = sumBy(a.tip, uni, TIP); tipTable($('tip-geo'), st, a.uso); usoBlock(st, a.uso);
-  const sa = sumBy(a.ar, uni, AR), sr = sumBy(a.rf, uni, RF);
-  const arL = [...AR.map((k, i) => [ARL[i], sa.get(k).area]), ...[...sa.keys()].filter(k => !AR.includes(k)).map(k => [k, sa.get(k).area])];
-  const AC = ['#b5543a', '#b5543a', '#8a8f8c', '#8a8f8c', '#3d6e8f', '#3d6e8f', '#c7ccc8'], am = Math.max(...arL.map(x => x[1]), 1);
-  $('ar-geo').innerHTML = arL.map(([l, v], i) => bar(l, 100 * v / am, nf0.format(v) + ' ha', AC[Math.min(i, 6)])).join('');
-  const rfL = [...RF.map((k, i) => [`${RFL[i][0]} (${RFL[i][1]})`, sr.get(k).area]), ...[...sr.keys()].filter(k => !RF.includes(k)).map(k => [k, sr.get(k).area])], rm = Math.max(...rfL.map(x => x[1]), 1);
-  $('rf-geo').innerHTML = rfL.map(([l, v]) => bar(l, 100 * v / rm, nf0.format(v) + ' ha')).join('');
+  const fi = geoF.get(), a0 = await aggAll(SEM_F()); if (a0 === undefined) return;
+  const a = await aggAll(fi); if (a === undefined) return; geoAgg = a;
+  const uni = new Set(universe());
+  const sum = x => { let n = 0, area = 0, deg = 0; for (const [c, o] of x.by) if (uni.has(c)) { n += o.n; area += o.area; deg += o.deg } return { n, area, deg } }, A = sum(a0), B = sum(a);
+  const card = (l, k, u) => `<div class="kc"><span class="l">${l}</span><b>${nf0.format(B[k])}${u}</b><div class="f">${UF || 'Caatinga'} ${nf0.format(A[k])} → filtros <em>${pc(B[k], A[k])}</em></div></div>`;
+  $('k-geo').innerHTML = card('Imóveis (CAR)', 'n', '') + card('Área dos imóveis', 'area', ' ha') + card('Área pot. degradada', 'deg', ' ha') + `<div class="kc"><span class="l">% da área degradada</span><b>${pc(B.deg, B.area)}</b><div class="f">agricultura + pastagem + mosaico</div></div>`;
+  const ch = imovelChips(fi); $('chips-geo').innerHTML = ch.join('') || '<span class="hint">Sem filtros de imóvel: todos os imóveis.</span>';
+  const st = sumBy(a.tip, uni, TIP); tipUsoTable($('tip-geo'), st); pie(st); usoBlock(st, a.uso);
+  const sa = sumBy(a.ar, uni, AR), sr = sumBy(a.rf, uni, RF), isA = arrfM === 'area', un = isA ? ' ha' : '', m = o => isA ? o.area : o.n;
+  $('ar-t').textContent = (isA ? 'Área' : 'Nº de CAR') + ' por classe de aridez'; $('rf-t').textContent = (isA ? 'Área' : 'Nº de CAR') + ' por risco fundiário';
+  const arL = [...AR.map((k, i) => [ARL[i], m(sa.get(k))]), ...[...sa.keys()].filter(k => !AR.includes(k)).map(k => [k, m(sa.get(k))])];
+  const AC = ['#b5543a', '#b5543a', '#8a8f8c', '#8a8f8c', '#3d6e8f', '#3d6e8f', '#c7ccc8'], am = Math.max(...arL.map(x => x[1]), 1), at = arL.reduce((s, x) => s + x[1], 0);
+  $('ar-geo').innerHTML = arL.map(([l, v], i) => bar(l, 100 * v / am, `${nf0.format(v)}${un} · ${pc(v, at)}`, AC[Math.min(i, 6)])).join('');
+  const rfL = [...RF.map((k, i) => [`${RFL[i][0]} (${RFL[i][1]})`, m(sr.get(k))]), ...[...sr.keys()].filter(k => !RF.includes(k)).map(k => [k, m(sr.get(k))])], rm = Math.max(...rfL.map(x => x[1]), 1), rt = rfL.reduce((s, x) => s + x[1], 0);
+  $('rf-geo').innerHTML = rfL.map(([l, v]) => bar(l, 100 * v / rm, `${nf0.format(v)}${un} · ${pc(v, rt)}`)).join('');
 }
+// Seleção por tipologia (aba 3): área de cada uso, com subtotais por grupo (a degradada por tipologia fica na aba 4)
+function tipUsoTable(el, t) {
+  const add = (a, x) => ({ n: a.n + x.n, area: a.area + x.area, u: a.u.map((v, i) => v + x.u[i]) }), Z = { n: 0, area: 0, u: [0, 0, 0, 0] }, T = [...t.values()].reduce(add, Z);
+  const tr = (l, x, c = '', st = '') => `<tr${c}${st}><td>${l}</td><td>${nf0.format(x.n)}</td><td>${nf0.format(x.area)}</td>${x.u.map(v => `<td>${nf0.format(v)}</td>`).join('')}</tr>`;
+  const CL = { af: '#4f6b55', hib: '#c4761a', eco: '#3d6e8f' }, outros = [...t.keys()].filter(k => !TIP.includes(k) && t.get(k).n);
+  el.innerHTML = `<thead><tr><th>Tipologia</th><th>Imóveis</th><th>Área (ha)</th>${USOS.map(([l, col]) => `<th><span class="dot" style="--bc:${col}"></span>${l} (ha)</th>`).join('')}</tr></thead><tbody>` +
+    TIPG.map(([k, l, ix]) => tr(`<span class="dot"></span>Subtotal ${l}`, ix.reduce((a, i) => add(a, t.get(TIP[i])), Z), ' class="gt"', ` style="--bc:${CL[k]}"`) + ix.map(i => tr('&nbsp;&nbsp;&nbsp;&nbsp;' + TIP[i], t.get(TIP[i]))).join('')).join('') +
+    outros.map(k => tr(esc(k), t.get(k))).join('') + tr('Total', T, ' class="sel"') + '</tbody>';
+}
+function pie(t) {
+  const ks = [...TIP, ...[...t.keys()].filter(k => !TIP.includes(k) && t.get(k).n)], col = i => TIPC[i] || '#c7ccc8';
+  const v = ks.map(k => pieM === 'n' ? t.get(k).n : t.get(k).area), T = v.reduce((a, b) => a + b, 0) || 1; let a0 = -Math.PI / 2, g = '';
+  const p = a => `${(100 * Math.cos(a)).toFixed(2)},${(100 * Math.sin(a)).toFixed(2)}`;
+  v.forEach((x, i) => { const a1 = a0 + 2 * Math.PI * x / T, lg = a1 - a0 > Math.PI ? 1 : 0; if (x > 0) g += x >= T ? `<circle r="100" fill="${col(i)}"/>` : `<path d="M0,0L${p(a0)}A100,100 0 ${lg} 1 ${p(a1)}Z" fill="${col(i)}" stroke="var(--bg)" stroke-width="1"><title>${esc(ks[i])}: ${pc(x, T)}</title></path>`; a0 = a1 });
+  $('pie-geo').innerHTML = g; $('pie-leg').innerHTML = ks.map((l, i) => `<div><i style="background:${col(i)}"></i>${esc(l)} <span class="u">${pc(v[i], T)}</span></div>`).join('');
+}
+// Pop-ups com figuras do Relatório 2 (assets/, ver assets/LEIAME.md)
+const FIG = {
+  tip: { t: 'Classificação dos imóveis por tipologia', cap: 'Figura 45. Árvore de classificação dos imóveis (Relatório 2, p. 79). Cada cadastro recebe uma só tipologia: a do primeiro critério atendido.', img: 'assets/fig45_arvore_tipologia.png', dl: 'assets/fig46_mapa_tipologia.jpg', dlt: 'Baixar Figura 46 (mapa do CAR por tipologia)' },
+  ar: { t: 'Dinâmica da aridez e ASD', cap: 'Figura 51. Distribuição espacial das classes A–F de dinâmica da aridez e enquadramento climático como ASD no bioma Caatinga (Relatório 2, p. 107).', img: 'assets/fig51_mapa_aridez.jpg', dl: 'assets/fig51_mapa_aridez.jpg', dlt: 'Baixar Figura 51' },
+  rf: { t: 'Classificação do risco fundiário', cap: 'Figura 50. Árvore de classificação do risco fundiário (Relatório 2, p. 102).', img: 'assets/fig50_arvore_risco.png', dl: 'assets/fig50_arvore_risco.png', dlt: 'Baixar Figura 50' },
+  deg: { t: 'Área potencialmente degradada', cap: 'Quadro 3. Resumo dos critérios aplicados na estimativa de áreas potencialmente degradadas (Relatório 2, p. 88).', html: `<table><thead><tr><th>Uso da terra no MapBiomas</th><th>Classificação</th><th>Regra</th></tr></thead><tbody><tr><td>Pastagem</td><td>Degradada</td><td style="white-space:normal;text-align:left">Degradação intermediária ou severa no LAPIG em pelo menos quatro dos cinco anos entre 2019 e 2023.</td></tr><tr><td>Pastagem</td><td>Não degradada</td><td style="white-space:normal;text-align:left">Não atende ao critério de persistência temporal do LAPIG.</td></tr><tr><td>Demais usos</td><td>Degradado</td><td style="white-space:normal;text-align:left">Ocorrência de nível 3, 4 ou 5 do LDI.</td></tr><tr><td>Demais usos</td><td>Não degradado</td><td style="white-space:normal;text-align:left">Categoria conservada ou níveis 1 ou 2 do LDI.</td></tr></tbody></table><p class="hint" style="margin-top:12px">No BI, a área potencialmente degradada soma agricultura + pastagem + mosaico de usos (definição de 24/11/2026).</p>` },
+};
+function openFig(k) {
+  const f = FIG[k]; $('fig-t').textContent = f.t; $('fig-cap').textContent = f.cap;
+  $('fig-body').innerHTML = f.html || `<img src="${f.img}" alt="${esc(f.cap)}">`;
+  const im = $('fig-body').querySelector('img'); if (im) im.onerror = () => { $('fig-body').innerHTML = `<div class="ph-fig">Não foi possível abrir a imagem.<br><b>${esc(f.cap)}</b></div>` };
+  const dl = $('fig-dl'); dl.hidden = !f.dl; if (f.dl) { dl.href = f.dl; dl.textContent = f.dlt; dl.setAttribute('download', f.dl.split('/').pop()) }
+  $('fig-ov').hidden = false; $('fig-x').focus();
+}
+const figClose = () => { $('fig-ov').hidden = true; document.querySelector('.figm').classList.remove('full'); $('fig-ov').classList.remove('fig-ov-full'); $('fig-exp').textContent = 'Expandir' };
 const z4 = () => [0, 0, 0, 0];
 function tipTable(el, t, uso) {
   const add = (a, x) => ({ n: a.n + x.n, area: a.area + x.area, deg: a.deg + x.deg, elig: a.elig + x.elig, f: a.f.map((v, i) => v + x.f[i]) }), Z = { n: 0, area: 0, deg: 0, elig: 0, f: z4() }, T = [...t.values()].reduce(add, Z);
@@ -357,8 +434,7 @@ async function integ() {
   if (!status.imoveis) return;
   const cods = universe(), fs = intSt.rc === 'sel' ? intU.get() : [], uni = new Set(cods.filter(c => passes(c, fs))), fi = intF.get();
   // funil: sem filtros de imóvel → recorte → filtros
-  const semF = { tip: new Set(TIP.keys()), ar: new Set(AR.keys()), rf: new Set(RF.keys()), up: [null, null, null, null], degmin: null, apt: 't' };
-  const a0 = await aggAll(semF); if (a0 === undefined) return;
+  const a0 = await aggAll(SEM_F()); if (a0 === undefined) return;
   const agg = await aggAll(fi); if (agg === undefined) return;
   const sum = (a, set) => { let n = 0, area = 0, deg = 0, m = 0; for (const [c, o] of a.by) if (set.has(c)) { n += o.n; area += o.area; deg += o.deg; if (o.n > 0) m++ } return { n, area, deg, m } };
   const s0 = sum(a0, new Set(cods)), s1 = sum(a0, uni), s2 = sum(agg, uni); s0.m = cods.length; s1.m = uni.size;
@@ -370,11 +446,7 @@ async function integ() {
   // etiquetas das condições ativas
   const ch = [];
   if (intSt.rc === 'sel') intU.rows().forEach((f, i) => { if (f.x != null && f.x !== '' && isFinite(f.x)) ch.push(`<span class="chip">${esc(flabel([f]))}<button data-rmf="${i}" aria-label="Remover">×</button></span>`) });
-  const off = (set, n, labs, name) => set.size < n ? `<span class="chip" style="--bc:#c4761a">${name}: ${[...set].sort().map(i => labs[i]).join(', ') || 'nenhum'}</span>` : '';
-  ch.push(off(fi.tip, 8, TIP, 'Tipologias'), off(fi.ar, 6, AR, 'Aridez'), off(fi.rf, 5, RFL.map(r => r[0]), 'Risco'));
-  fi.up.forEach((x, i) => { if (x) ch.push(`<span class="chip" style="--bc:#c4761a">${USOS[i][0]} ${x.op === '>=' ? '≥' : '≤'} ${fmt(x.x)}% do imóvel</span>`) });
-  if (fi.degmin != null) ch.push(`<span class="chip" style="--bc:#c4761a">Degradada ≥ ${fmt(fi.degmin)} ha</span>`);
-  if (fi.apt !== 't') ch.push(`<span class="chip" style="--bc:#c4761a">${fi.apt === 's' ? 'Só elegíveis' : 'Só não elegíveis'}</span>`);
+  ch.push(...imovelChips(fi));
   $('chips-int').innerHTML = ch.join('');
   // mapa único com alternância
   const vals = new Map(); for (const c of uni) { const o = agg.by.get(c); vals.set(c, o ? (intSt.mv === 'n' ? o.n : o.deg) : 0) }
@@ -404,7 +476,7 @@ function visaoAtual() {
 }
 function semImoveis() {
   const msg = `<div class="warn"><b>Dados por imóvel indisponíveis.</b> ${esc(status.imoveisMsg)} Esse arquivo não fica no git: é gerado por Pedro com <code>scripts/extrair_imoveis.py</code> ou distribuído à parte. Copie-o para <code>data/local/imoveis.parquet</code> e recarregue a página.${status.resumo ? ' Nas abas 1 e 2, as variáveis Geo usam o resumo municipal versionado (<code>data/geo_mun_resumo.parquet</code>).' : ''}</div>`;
-  for (const id of ['p-geo', 'p-int']) { const p = $(id); [...p.children].forEach(c => c.hidden = true); p.insertAdjacentHTML('afterbegin', msg) }
+  for (const id of ['p-geo', 'p-int']) { const p = $(id); [...p.children].forEach(c => { if (!c.hasAttribute('data-fixo')) c.hidden = true }); p.insertAdjacentHTML('afterbegin', msg) } // o bloco do bioma (valores fixos) continua visível
 }
 async function main() {
   const t0 = performance.now();
@@ -417,6 +489,8 @@ async function main() {
   BIOMA = g.bioma || [];
   for (const r of R) RM.set(r.codmun, r);
   // Agregação "todos os imóveis" em cache (recortes com variáveis geo e variáveis geo nas abas 1 e 2)
+  if (status.pontos) PTS = await q(`SELECT id, organizacao AS org, classe, cadeia, local_citado AS local, precisao AS prec, codmun, municipio AS mun, uf, lat::DOUBLE AS lat, lon::DOUBLE AS lon
+    FROM arranjos_pontos WHERE precisao <> 'sem_local' AND coalesce(lat, '') <> '' AND coalesce(lon, '') <> '' ORDER BY id::INT, codmun`);
   if (status.imoveis) BASEAGG = await aggAll(null);
   else if (status.resumo) { const rs = await q('SELECT * FROM geo_mun_resumo'); BASEAGG = { by: new Map(rs.map(r => [r.codmun, r])) } }
   UFS = [...new Set(R.map(r => r.uf))].sort();
@@ -448,6 +522,16 @@ async function main() {
     document.querySelectorAll('[role=tab]').forEach(x => x.setAttribute('aria-selected', x === b));
     document.querySelectorAll('.pane').forEach(p => p.hidden = p.id !== 'p-' + b.dataset.p); if (b.dataset.p !== 'sql') renderAll()
   }));
+  document.addEventListener('click', e => {
+    if (e.target.closest('[data-pts]')) { PTS_ON = !PTS_ON; renderAll() }
+    const fb = e.target.closest('[data-fig]'); if (fb) { e.preventDefault(); openFig(fb.dataset.fig) }
+    const pb = e.target.closest('[data-pie]'); if (pb) { pieM = pb.dataset.pie; document.querySelectorAll('[data-pie]').forEach(b => b.setAttribute('aria-pressed', b.dataset.pie === pieM)); geo() }
+    const ab = e.target.closest('[data-arrf]'); if (ab) { arrfM = ab.dataset.arrf; document.querySelectorAll('[data-arrf]').forEach(b => b.setAttribute('aria-pressed', b.dataset.arrf === arrfM)); geo() }
+  });
+  $('fig-x').onclick = figClose; $('fig-ov').addEventListener('click', e => { if (e.target.id === 'fig-ov') figClose() });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('fig-ov').hidden) figClose() });
+  $('fig-exp').onclick = () => { const m = document.querySelector('.figm'), f = m.classList.toggle('full'); $('fig-ov').classList.toggle('fig-ov-full', f); $('fig-exp').textContent = f ? 'Reduzir' : 'Expandir' };
+  bioma();
   if (!status.imoveis) semImoveis();
   initConsole($('p-sql'));
   $('load').hidden = true;

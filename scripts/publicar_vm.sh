@@ -15,13 +15,13 @@ python3 scripts/checar_dados.py
 
 # Só o que o navegador usa. Nada de prototipo/ (imoveis_simulados.json), data/raw, scripts, extract ou .git.
 LISTA=$(mktemp)
-{ echo index.html; find js vendor -type f; ls data/*.parquet data/malha_municipios.json data/manifest.json; echo data/local/imoveis.parquet; } > "$LISTA"
+{ echo index.html; find js vendor assets -type f; ls data/*.parquet data/*.csv data/malha_municipios.json data/manifest.json; echo data/local/imoveis.parquet; } > "$LISTA"
 grep -q prototipo "$LISTA" && { echo "prototipo/ não pode ser publicado"; exit 1; }
 
 # Cópia de trabalho com versões .gz (o Caddy serve com "precompressed gzip"; nada é comprimido na VM)
 STAGE=$(mktemp -d); trap 'rm -f "$LISTA"; rm -rf "$STAGE"' EXIT
 rsync -a --files-from="$LISTA" ./ "$STAGE/"
-find "$STAGE" -type f \( -name '*.wasm' -o -name '*.js' -o -name '*.mjs' -o -name '*.json' -o -name '*.html' -o -name '*.md' \) -exec gzip -9 -k -n {} +
+find "$STAGE" -type f \( -name '*.wasm' -o -name '*.js' -o -name '*.mjs' -o -name '*.json' -o -name '*.html' -o -name '*.md' -o -name '*.csv' \) -exec gzip -9 -k -n {} +
 cp deploy/caddy-bi.caddy "$STAGE/.caddy-bi.caddy"
 
 SSH="ssh -i $CHAVE -o ConnectTimeout=30"
