@@ -178,6 +178,29 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:var(--in
 [hidden]{display:none!important}
 @media(max-width:860px){.mb{grid-template-columns:1fr}}
 @media(max-width:600px){.row{grid-template-columns:100px minmax(0,1fr) 78px;font-size:14px}.map{min-height:360px}}
+
+/* v13: barras de composição, pontos com busca, dicionário, hachura × recorte, APL × pontos */
+.comp{position:relative;background:var(--soft);border-radius:8px;padding:10px 12px;display:grid;gap:8px}
+.comph{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.comph b{font-size:15px}
+.cb{display:grid;gap:3px}.cbl{font-size:13px;font-weight:600}.cbl em{font-style:normal;font-weight:400;color:var(--mut)}
+.cbg{display:flex;height:16px;font-size:11px;line-height:16px}.cbg span{border-top:3px solid var(--gc);color:var(--gc);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:clip;padding-right:2px}
+.cbb{display:flex;height:24px;border-radius:4px;overflow:hidden}.cbb i{display:block;height:100%;color:#fff;font-size:11px;font-style:normal;line-height:24px;text-align:center;white-space:nowrap;overflow:hidden;border-right:1px solid var(--bg);cursor:default}
+.cbb i:hover{filter:brightness(1.15)}
+.cbm{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;font-size:12.5px}.cbm>div{border-left:3px solid var(--gc);padding-left:6px;display:grid}.cbm b{color:var(--gc);font-size:12.5px}.cbm em{font-style:normal;color:var(--mut)}
+.cbtip{position:absolute;z-index:5;background:var(--ink);color:var(--bg);font-size:12.5px;padding:6px 9px;border-radius:6px;pointer-events:none;max-width:320px;line-height:1.4}
+.ptswrap{position:absolute;top:8px;right:8px;z-index:4;display:flex;flex-direction:column;align-items:flex-end}.ptswrap .ptsbtn{position:static}
+.ptspan{margin-top:6px;width:min(420px,calc(100vw - 40px));max-height:min(430px,70vh);display:flex;flex-direction:column;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.18);padding:10px}
+.ptspan input[type=search]{min-height:38px;padding:0 10px;border:1px solid var(--line);border-radius:6px;font-size:14px}
+.ptslist{overflow:auto;display:grid;gap:6px;padding-right:4px}.ptsg{display:grid;gap:2px}.ptsgh{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--mut);position:sticky;top:0;background:var(--bg);padding:2px 0}.ptsgh i{width:10px;height:10px;border-radius:50%}
+.ptsg label{display:flex;gap:6px;align-items:flex-start;font-size:13.5px;line-height:1.3;padding:3px 2px;cursor:pointer}.ptsg label em{color:var(--mut);font-style:normal}.ptsg label input{margin-top:2px;flex:none;width:16px;height:16px}
+.legrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:10px;align-items:start}
+.pdic{display:grid;gap:3px;font-size:12.5px;background:var(--soft);border-radius:8px;padding:8px 10px}.pdic>div{display:grid;grid-template-columns:12px 14px 1fr auto;gap:5px;align-items:center}.pdic i{width:10px;height:10px;border-radius:50%}.pdic em{font-style:normal;font-weight:700}.pdic .z{opacity:.4}.pdic .pdicn{display:block;color:var(--mut);font-size:11.5px}
+.hm{border:1px solid var(--line);border-left:4px solid #7a5a8c;border-radius:8px;padding:8px 10px;display:grid;gap:6px;font-size:13px;margin-top:8px}.hmt{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}.hmt span{color:var(--mut)}
+.hmg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.hmg>div{display:grid}.hmg span{color:var(--mut);font-size:12px}.hmg b{font-size:18px}.hmg em{font-style:normal;color:var(--mut);font-size:11.5px}.hmA b{color:#7a5a8c}
+.aplq{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:16px;align-items:start}.aplq .map{height:520px}
+.amr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.amr>div{background:var(--soft);border-radius:8px;padding:8px 12px;display:grid}.amr span{font-size:13px;color:var(--mut)}.amr b{font-size:24px}.amr em{font-style:normal;color:var(--mut);font-size:12.5px}.amr .ok b{color:#1a7f3c}.amr .no b{color:#d73027}
+.ams{font-size:15px;margin:10px 0 6px}.aml{margin:0;padding-left:18px;font-size:13.5px;display:grid;gap:3px}.aml li.in::marker{color:#1a7f3c}.aml li.out::marker{color:#d73027}.aml em{font-style:normal;color:var(--mut)}
+@media (max-width:1100px){.aplq{grid-template-columns:1fr}.hmg{grid-template-columns:repeat(3,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -248,11 +271,13 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:var(--in
 <aside class="intr" aria-label="Resultado da seleção">
 <div class="chips" id="chips-int"></div>
 <div class="kgrid" id="k-int"></div>
+<div id="comp-int"></div>
 <div class="seg" role="group" aria-label="Variável do mapa"><button data-mv="n" aria-pressed="true">Nº de imóveis</button><button data-mv="deg" aria-pressed="false">Área pot. degradada (ha)</button></div>
-<div class="map" id="m1"></div><div class="leg" id="l1"></div>
+<div class="map" id="m1"></div><div class="legrow"><div class="leg" id="l1"></div><div id="pdic-int"></div></div><div id="hm-int"></div>
 </aside>
 </div>
 <section><h2><span class="step">4</span>Área potencialmente degradada por tipologia na seleção</h2><div class="scroll"><table id="tip-int"></table></div><div class="fr" style="margin-top:10px"><button class="btn" id="cp-int">Copiar visão (JSON)</button></div><pre id="vj-int" hidden></pre></section>
+<section><h2><span class="step">5</span>Arranjos já existentes: APLs × pontos das entrevistas</h2><p class="q">Escolha um setor de APL (ou um APL específico) e veja quantos arranjos citados nas entrevistas, da mesma cadeia, estão nos municípios desse APL. APLs: Observatório Brasileiro de APLs (MDIC, outubro de 2022). O mapa usa a UF do topo e não muda com o recorte.</p><div id="apl-cmp"></div></section>
 </div>
 </main>
 <button class="fb-btn" id="fb-open" aria-haspopup="dialog">Feedback</button>

@@ -382,3 +382,35 @@ O protótipo foi atualizado (v10). Mudanças na aba 3:
 - Todos os mapas mostram as divisas entre UFs como linha contínua fina (`path.ufl`), sobre os municípios e abaixo dos pontos. As linhas não dependem do recorte nem dos filtros, e a legenda traz "limite de UF".
 - **Hoje** as divisas são derivadas no navegador (`limitesUF()`) das bordas compartilhadas entre municípios de UFs diferentes na malha. Cobrem todas as divisas dentro da malha: PI-CE, PI-PE, PI-BA, CE-RN, CE-PB, CE-PE, RN-PB, PB-PE, PE-AL, PE-BA, AL-SE, AL-BA, SE-BA e BA-MG.
 - **Melhoria opcional:** rodar `scripts/preparar_malha.py` com `BR_UF_2022.zip` do IBGE no mesmo diretório. A malha passa a ter `uf` com as divisas completas (`-innerlines`, recortadas na caixa do bioma + 1°), inclusive fora da malha municipal, e o BI usa essa camada automaticamente.
+
+## 19. Em revisão: protótipo v13 (26/11/2026), ainda não implementar no BI
+
+Pedidos de Pedro de 25/11, feitos no protótipo (`prototipo/`, artifact v13) para aprovação:
+
+1. **Aba 4, barras de composição no painel fixo** (entre os cards e o mapa)
+   - Duas barras por tipologia: imóveis e área potencialmente degradada.
+   - Faixa acima de cada barra com o % dos três agrupamentos.
+   - Dica ao passar o mouse: nº de imóveis, %, área média e degradada média.
+   - Linha com área média e degradada média por agrupamento.
+2. **Aba 4, dicionário dos pontos** ao lado da legenda: classes A–D com o texto curto e a contagem dos pontos selecionados.
+3. **Pontos das entrevistas em todos os mapas:** lista com busca textual e caixas de marcar por classe, com "Marcar os visíveis" e "Nenhum". A seleção é a mesma em todos os mapas. Substitui o liga/desliga.
+4. **Aba 4, seção 5 "APLs × pontos das entrevistas"** (substitui a tabela de 142 APLs)
+   - Pergunta: setor de APL ou APL específico.
+   - Mapa: municípios do APL e pontos da mesma cadeia, dentro ou fora dos municípios do APL.
+   - Métricas: municípios do APL, pontos da cadeia, dentro, fora e municípios do APL sem ponto.
+   - **Correspondência setor → arranjos (RASCUNHO, Pedro revisa):**
+
+     | Setor | Arranjos |
+     |---|---|
+     | Apicultura | #13, #4, #6 |
+     | Caprinovinocultura | #12, #16, #4 |
+     | Bovinocultura | #17 |
+     | Fruticultura | #1, #4, #6 |
+     | Agricultura | #3, #4, #8, #14, #18, #21 |
+     | Têxtil | #14, #15 |
+     | Demais setores | nenhum |
+
+5. **Hachura na aba 4 e métrica recorte × hachura em todos os construtores:** recorte X, hachura Y, coincidência A (% do recorte e da hachura), só no recorte, só na hachura (calculado na UF do topo).
+6. **Rótulo das variáveis binárias:** condição "≥ 1" ou "> 0" aparece como "<variável>: sim".
+
+O protótipo v13 não traz as mudanças de 25/11 que já estão no BI (tema, layout, zoom e linhas de UF).
