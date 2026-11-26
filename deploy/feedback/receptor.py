@@ -10,19 +10,26 @@ exige a senha do BI; este processo não é exposto à internet.
 Cada envio vira uma pasta em FEEDBACK_DIR/<AAAAmmdd-HHMMSS>-<id>/ com:
   feedback.json, captura.<png|jpg|webp> (opcional), audio.<webm|ogg|mp4|m4a|mp3|wav> (opcional)
 
-Variáveis: FEEDBACK_DIR (padrão ~/feedback/bi-caatinga), BIND (padrão 127.0.0.1), PORT (padrão 8090).
-Nenhum segredo aqui. Nenhuma chamada para fora da VM.
+Feedback direto como issue (especificação 10.4): logo depois de salvar, uma thread cria a issue no GitHub
+(issues.py) e grava issue.json na pasta; se o GitHub falhar, tenta de novo a cada minuto, sem duplicar.
+Depois avisa no celular pelo ntfy (se NTFY_URL estiver definido). A transcrição do áudio fica com transcrever.py.
+
+Variáveis: FEEDBACK_DIR (padrão ~/feedback/bi-caatinga), BIND (padrão 127.0.0.1), PORT (padrão 8090),
+e as de issues.py (GITHUB_TOKEN, GH_REPO, BI_URL, NTFY_URL, NTFY_AUTH). Nenhum segredo no código.
 """
 import base64
 import binascii
 import json
 import os
 import secrets
+import threading
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+import issues
 
 DIR = Path(os.environ.get("FEEDBACK_DIR", str(Path.home() / "feedback" / "bi-caatinga")))
 BIND = os.environ.get("BIND", "127.0.0.1")
@@ -31,21 +38,55 @@ MAX_CORPO = 22 * 1024 * 1024          # JSON inteiro (base64 aumenta ~33%)
 MAX_IMG = 5 * 1024 * 1024             # depois de decodificar
 MAX_AUD = 10 * 1024 * 1024
 LIMITE_MIN = 10                       # envios por minuto por IP
+LIMITE_HORA = 20                      # envios por hora por IP
 CATEGORIAS = {"problema", "melhoria", "duvida", "elogio"}
 EXT_IMG = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}
 EXT_AUD = {"audio/webm": "webm", "audio/ogg": "ogg", "audio/mp4": "mp4", "audio/x-m4a": "m4a",
            "audio/mpeg": "mp3", "audio/wav": "wav", "audio/x-wav": "wav"}
 _envios = defaultdict(deque)
+_lock = threading.Lock()
+_acorda = threading.Event()
 
 
 def _limite_ok(ip: str) -> bool:
-    agora, fila = time.time(), _envios[ip]
-    while fila and agora - fila[0] > 60:
-        fila.popleft()
-    if len(fila) >= LIMITE_MIN:
-        return False
-    fila.append(agora)
-    return True
+    with _lock:
+        agora, fila = time.time(), _envios[ip]
+        while fila and agora - fila[0] > 3600:
+            fila.popleft()
+        if len(fila) >= LIMITE_HORA or sum(1 for t in fila if agora - t <= 60) >= LIMITE_MIN:
+            return False
+        fila.append(agora)
+        return True
+
+
+def _trabalhador():
+    """Cria as issues pendentes (pastas sem issue.json). Acorda a cada envio ou a cada minuto."""
+    rotulos_ok = False
+    while True:
+        _acorda.wait(60)
+        _acorda.clear()
+        if not issues.configurado():
+            continue
+        for jf in sorted(DIR.glob("*/feedback.json")):
+            pasta = jf.parent
+            if (pasta / "issue.json").exists():
+                continue
+            try:
+                f = json.loads(jf.read_text(encoding="utf-8"))
+                if not rotulos_ok:
+                    issues.garantir_rotulos()
+                    rotulos_ok = True
+                marca = pasta / ".tentou"
+                iss = issues.criar_issue(f, tentativa_anterior=marca.exists())
+                (pasta / "issue.json").write_text(json.dumps(iss), encoding="utf-8")
+                print(f"issue #{iss['numero']} criada para {f['id']}", flush=True)
+                issues.avisar(f, iss)
+            except issues.ErroGitHub as e:
+                (pasta / ".tentou").touch()
+                print(f"{pasta.name}: {e}; nova tentativa em 1 minuto", flush=True)
+                break
+            except (OSError, ValueError, KeyError) as e:
+                print(f"{pasta.name}: {type(e).__name__} ao processar", flush=True)
 
 
 def _decodifica(b64, tipo, tabela, maximo, nome):
@@ -122,6 +163,7 @@ class Handler(BaseHTTPRequestHandler):
             (pasta / f"audio.{ext_aud}").write_bytes(aud)
             reg["audio"] = f"audio.{ext_aud}"
         (pasta / "feedback.json").write_text(json.dumps(reg, ensure_ascii=False, indent=1), encoding="utf-8")
+        _acorda.set()
         self._resp(201, {"ok": True, "id": fid})
 
     def log_message(self, fmt, *args):   # log curto, sem conteúdo do feedback
@@ -131,5 +173,7 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     DIR.mkdir(parents=True, exist_ok=True)
     os.chmod(DIR, 0o700)
-    print(f"bi-feedback em {BIND}:{PORT}, gravando em {DIR}", flush=True)
+    print(f"bi-feedback em {BIND}:{PORT}, gravando em {DIR}; issues {'ligadas' if issues.configurado() else 'DESLIGADAS (sem GITHUB_TOKEN)'}", flush=True)
+    threading.Thread(target=_trabalhador, daemon=True).start()
+    _acorda.set()
     ThreadingHTTPServer((BIND, PORT), Handler).serve_forever()

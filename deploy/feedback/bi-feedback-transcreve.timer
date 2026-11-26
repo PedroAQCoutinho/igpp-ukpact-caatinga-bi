@@ -1,0 +1,10 @@
+# systemd: /etc/systemd/system/bi-feedback-transcreve.timer — systemctl enable --now bi-feedback-transcreve.timer
+[Unit]
+Description=Transcrição dos áudios de feedback a cada 2 minutos
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+
+[Install]
+WantedBy=timers.target

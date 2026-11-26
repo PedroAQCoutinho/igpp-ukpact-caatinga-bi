@@ -10,6 +10,8 @@ User=opc
 Environment=FEEDBACK_DIR=/home/opc/feedback/bi-caatinga
 Environment=BIND=127.0.0.1
 Environment=PORT=8090
+# Token do GitHub (Issues RW só deste repo), BI_URL e ntfy: arquivo root:root 600, fora do git (ver env.exemplo)
+EnvironmentFile=/etc/bi-feedback/env
 ExecStart=/usr/bin/python3 /home/opc/bi-feedback/receptor.py
 Restart=on-failure
 RestartSec=5

@@ -1,0 +1,19 @@
+# systemd: /etc/systemd/system/bi-feedback-transcreve.service (acionado pelo .timer)
+[Unit]
+Description=Transcreve áudios de feedback do BI Caatinga e comenta na issue
+
+[Service]
+Type=oneshot
+User=opc
+Environment=FEEDBACK_DIR=/home/opc/feedback/bi-caatinga
+Environment=WHISPER_MODELO=small
+EnvironmentFile=/etc/bi-feedback/env
+WorkingDirectory=/home/opc/bi-feedback
+# faster-whisper num venv próprio: python3 -m venv ~/bi-feedback/venv && ~/bi-feedback/venv/bin/pip install faster-whisper
+ExecStart=/home/opc/bi-feedback/venv/bin/python /home/opc/bi-feedback/transcrever.py
+MemoryMax=3G
+CPUQuota=200%
+Nice=10
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true

@@ -7,3 +7,15 @@ handle /api/feedback* {
 	}
 	reverse_proxy host.docker.internal:8090
 }
+# Anexos dos feedbacks (print e áudio), para os links das issues. Monte ~/feedback/bi-caatinga no container
+# do Caddy, só leitura, em /srv/feedback (ex.: volume "/home/opc/feedback/bi-caatinga:/srv/feedback:ro").
+# Só arquivos de anexo; feedback.json, issue.json e transcricao.json não são servidos.
+handle_path /feedback-arquivos/* {
+	@anexo path_regexp ^/[0-9]{8}-[0-9]{6}-[0-9a-f]{6}/(captura|audio)\.(png|jpg|webp|webm|ogg|mp4|m4a|mp3|wav)$
+	handle @anexo {
+		root * /srv/feedback
+		header Cache-Control "private, max-age=3600"
+		file_server
+	}
+	respond 404
+}

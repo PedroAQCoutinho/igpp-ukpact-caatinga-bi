@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Transforma os feedbacks recebidos na VM em issues no GitHub (roda na máquina de Pedro).
+"""REPROCESSAMENTO MANUAL. Desde 26/11/2026 o receptor da VM cria a issue sozinho (especificação 10.4).
+Use este script só para feedbacks antigos ou se o receptor ficou sem token.
+
+Transforma os feedbacks recebidos na VM em issues no GitHub (roda na máquina de Pedro).
+Pula as pastas com issue.json, que a VM já transformou em issue.
 
 Passos:
   1. rsync dos feedbacks da VM para data/local/feedback/ (fora do git);
@@ -112,6 +116,8 @@ def main():
         if f["id"] in feitos:
             continue
         pasta = jf.parent
+        if (pasta / "issue.json").exists():   # a VM já criou a issue (especificação 10.4)
+            continue
         trans = transcrever(pasta / f["audio"]) if f.get("audio") else None
         resumo = (f.get("texto") or trans or "").strip().splitlines()[0:1]
         titulo = f"[{TITULO.get(f['categoria'], 'Feedback')}] " + ((resumo[0][:80] + ("…" if len(resumo[0]) > 80 else "")) if resumo else f"feedback de {f['nome']}")
