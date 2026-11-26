@@ -26,8 +26,8 @@ const METH = { q4: 'Quartis', q5: 'Quintis', q10: 'Decis', eq: 'Intervalos iguai
 const OPS = { '>': '>', '>=': '≥', '<': '<', '<=': '≤' };
 
 let R = [], RM = new Map(), UF = '', UFS = [], POLY = {}, AREA = new Map(), BIOMA = [], UFL = [], BASEAGG = { by: new Map() };
-// Arranjos citados nas entrevistas (seção 12.1): só os pontos com local; liga/desliga único para todos os mapas
-let PTS = [], PTS_ON = false;
+// Arranjos citados nas entrevistas (seção 12.1): só os pontos com local. Seleção múltipla com busca, a mesma em todos os mapas (seção 19.3)
+let PTS = [], PTS_SEL = new Set(), PTS_OPEN = false, PTS_Q = '';
 const PCL = { A: '#1a7f3c', B: '#2f6fb0', C: '#c4761a', D: '#7a5a8c' }, PRL = { municipio: 'município citado', municipio_inferido: 'município inferido (conferir)', regiao_aprox: 'região aproximada' };
 
 // ---------- variáveis municipais ----------
@@ -177,7 +177,25 @@ function ramp(p, n) { const s = PAL[p][1]; if (n <= 1) return [s[s.length - 1]];
 
 // ---------- desenho do mapa ----------
 let HID = 0;
-const ptsBtn = () => `<button class="ptsbtn" data-pts aria-pressed="${PTS_ON}">${PTS_ON ? '●' : '○'} Arranjos citados nas entrevistas (${PTS.length})</button>`;
+const PCD = { A: 'Combinação explícita e em operação', B: 'Combinação em proposta ou teste', C: 'Inclusão consolidada, recuperação a construir', D: 'Recuperação ou financiamento, inclusão a construir' };
+const ptsU = () => { const m = new Map(); for (const p of PTS) if (!m.has(p.id)) m.set(p.id, p); return [...m.values()] };
+const norm = t => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const ptsTxt = p => norm(`#${p.id} ${p.org} ${p.cadeia} ${p.local} ${p.mun} ${p.obs || ''} classe ${p.classe}`);
+function ptsBtn() {
+  const U = ptsU(), n = PTS_SEL.size;
+  return `<div class="ptswrap"><button class="ptsbtn" data-ptsopen aria-expanded="${PTS_OPEN}" aria-pressed="${n > 0}">${n ? '●' : '○'} Arranjos citados nas entrevistas (${n ? n + ' de ' + U.length : U.length}) ▾</button>${PTS_OPEN ? ptsPanel(U) : ''}</div>`
+}
+function ptsPanel(U) {
+  const qq = norm(PTS_Q);
+  return `<div class="ptspan" role="dialog" aria-label="Escolher arranjos"><input type="search" data-ptsq placeholder="Buscar: SAF, mel, Coopercuc, Pajeú…" value="${esc(PTS_Q)}" aria-label="Buscar arranjos">
+ <div class="fr"><button class="btn" data-ptsall>Marcar os visíveis</button><button class="btn" data-ptsnone>Nenhum</button></div><div class="ptslist">` +
+    ['A', 'B', 'C', 'D'].map(c => {
+      const it = U.filter(p => p.classe === c); if (!it.length) return '';
+      return `<div class="ptsg"${qq && !it.some(p => ptsTxt(p).includes(qq)) ? ' hidden' : ''}><div class="ptsgh"><i style="background:${PCL[c]}"></i><b>${c}</b> ${PCD[c]}</div>` +
+        it.map(p => `<label data-ptxt="${esc(ptsTxt(p))}"${qq && !ptsTxt(p).includes(qq) ? ' hidden' : ''}><input type="checkbox" data-ptsid="${esc(p.id)}"${PTS_SEL.has(p.id) ? ' checked' : ''}> <span>#${esc(p.id)} ${esc(p.org)} <em>${esc(p.cadeia)}</em></span></label>`).join('') + '</div>'
+    }).join('') + `</div></div>`
+}
+function ptsFilter(panel) { const qq = norm(PTS_Q); panel.querySelectorAll('label[data-ptxt]').forEach(l => l.hidden = !!qq && !l.dataset.ptxt.includes(qq)); panel.querySelectorAll('.ptsg').forEach(g => g.hidden = !g.querySelector('label:not([hidden])')) }
 // Zoom e arrasto dos mapas: botões + − ⟲ (volta à seleção) ⤢ (bioma inteiro; afasta além do recorte), Ctrl/⌘ + roda (ou pinça no trackpad), duplo clique e arrastar quando ampliado.
 const ZOOM_UI = `<div class="zoomc" role="group" aria-label="Zoom do mapa"><button type="button" data-z="in" aria-label="Aproximar" title="Aproximar">+</button><button type="button" data-z="out" aria-label="Afastar" title="Afastar">−</button><button type="button" data-z="0" aria-label="Voltar à seleção" title="Voltar à seleção">⟲</button><button type="button" data-z="all" aria-label="Ver o bioma inteiro" title="Ver o bioma inteiro">⤢</button></div><div class="zhint" hidden>Use Ctrl + roda do mouse (⌘ no Mac) ou os botões para aproximar</div>`;
 function zoomable(box, W, H, pid, C) {
@@ -241,17 +259,20 @@ function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors,
   if (o.hatch) for (const c of drawn) if (o.hatch.has(c) && o.inSet.has(c)) g += `<path d="${path(c)}" fill="url(#${id})" fill-rule="evenodd" pointer-events="none"/>`;
   if (UFL.length) g += `<path class="ufl" d="${UFL.map(l => 'M' + l.map(P).join('L')).join('')}" pointer-events="none"/>`;
   if (BIOMA.length) g += `<path class="bioma" d="${ringsPath(BIOMA)}" pointer-events="none"/>`;
-  if (PTS_ON) { // pontos nos municípios desenhados (na aba 4, só os do recorte); vários no mesmo município ficam lado a lado
+  // pontos nos municípios desenhados (na aba 4, só os do recorte); vários no mesmo município ficam lado a lado.
+  // o.pts: estilo próprio por ponto (seção APL × pontos); senão, os selecionados na lista, na cor da classe
+  const ptsSty = o.pts || (p => PTS_SEL.has(p.id) ? { fill: p.prec === 'regiao_aprox' ? '#fff' : (PCL[p.classe] || '#555'), stroke: PCL[p.classe] || '#555', w: p.prec === 'regiao_aprox' ? 2.5 : 1.5 } : null);
+  {
     const dset = new Set(drawn), grp = {};
-    PTS.forEach((p, i) => { if (dset.has(p.codmun)) (grp[p.codmun] = grp[p.codmun] || []).push(i) });
+    PTS.forEach((p, i) => { if (dset.has(p.codmun) && ptsSty(p)) (grp[p.codmun] = grp[p.codmun] || []).push(i) });
     for (const ids of Object.values(grp)) ids.forEach((i, k) => {
-      const p = PTS[i], [x, y] = P([p.lon, p.lat]).split(',').map(Number), n = ids.length, dx = n > 1 ? 7 * Math.cos(2 * Math.PI * k / n) : 0, dy = n > 1 ? 7 * Math.sin(2 * Math.PI * k / n) : 0, col = PCL[p.classe] || '#555', oco = p.prec === 'regiao_aprox';
+      const p = PTS[i], [x, y] = P([p.lon, p.lat]).split(',').map(Number), n = ids.length, dx = n > 1 ? 7 * Math.cos(2 * Math.PI * k / n) : 0, dy = n > 1 ? 7 * Math.sin(2 * Math.PI * k / n) : 0, st = ptsSty(p);
       const cx = (x + dx).toFixed(1), cy = (y + dy).toFixed(1);
-      pts += `<circle data-bx="${cx}" data-by="${cy}" cx="${cx}" cy="${cy}" r="8.5" fill="#fff" pointer-events="none"/><circle data-pt="${i}" data-bx="${cx}" data-by="${cy}" cx="${cx}" cy="${cy}" r="6" style="fill:${oco ? '#fff' : col};stroke:${col};stroke-width:${oco ? 2.5 : 1.5};cursor:pointer"/>`;
+      pts += `<circle data-bx="${cx}" data-by="${cy}" cx="${cx}" cy="${cy}" r="8.5" fill="#fff" pointer-events="none"/><circle data-pt="${i}" data-bx="${cx}" data-by="${cy}" cx="${cx}" cy="${cy}" r="6" style="fill:${st.fill};stroke:${st.stroke};stroke-width:${st.w};cursor:pointer"/>`;
     });
   }
   g += `</g><g class="zp">${pts}</g>`;
-  box.innerHTML = `<svg role="img" viewBox="0 0 ${W} ${H}" aria-label="${esc(o.title || 'Mapa municipal')}"${o.blank ? ' class="blank"' : ''}>${g}</svg>${PTS.length ? ptsBtn() : ''}${ZOOM_UI}<div class="tip" hidden></div>`;
+  box.innerHTML = `<svg role="img" viewBox="0 0 ${W} ${H}" aria-label="${esc(o.title || 'Mapa municipal')}"${o.blank ? ' class="blank"' : ''}>${g}</svg>${PTS.length && !o.pts ? ptsBtn() : ''}${ZOOM_UI}<div class="tip" hidden></div>`;
   let cx0 = 0, cy0 = 0, cx1 = W, cy1 = H; // área navegável: quadro inicial ∪ bioma inteiro
   for (const r of (BIOMA.length ? BIOMA : Object.values(POLY).flat())) for (const q of r) { const [px, py] = P(q).split(',').map(Number); if (px < cx0) cx0 = px; if (px > cx1) cx1 = px; if (py < cy0) cy0 = py; if (py > cy1) cy1 = py }
   zoomable(box, W, H, id, [cx0, cy0, cx1, cy1]);
@@ -269,10 +290,10 @@ function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors,
   };
   box.querySelector('svg').onmouseleave = () => tip.hidden = true;
 }
-const ptsLeg = () => PTS_ON ? `<div style="margin-top:4px"><b>Arranjos citados nas entrevistas</b></div>` + Object.entries(PCL).map(([k, c]) => `<div><i style="background:${c};border-radius:50%;width:13px"></i>classe ${k}</div>`).join('') + `<div><i style="background:var(--bg);border:2.5px solid var(--mut);border-radius:50%;width:13px"></i>ponto em região aproximada</div>` : '';
-const biomaLeg = () => (UFL.length ? `<div><i style="background:none;border:0;border-top:1.5px solid var(--ink);opacity:.6;height:0"></i>limite de UF</div>` : '') + (BIOMA.length ? `<div><i style="background:none;border:0;border-top:2px dashed var(--mut);height:0"></i>limite do bioma Caatinga (IBGE 2019)</div>` : '') + ptsLeg();
+const ptsLeg = o => PTS_SEL.size && !(o && (o.pts || o.noPtsLeg)) ? `<div style="margin-top:4px"><b>Arranjos citados nas entrevistas</b></div>` + Object.entries(PCL).map(([k, c]) => `<div><i style="background:${c};border-radius:50%;width:13px"></i>classe ${k} · ${PCD[k].toLowerCase()}</div>`).join('') + `<div><i style="background:var(--bg);border:2.5px solid var(--mut);border-radius:50%;width:13px"></i>ponto em região aproximada</div>` : '';
+const biomaLeg = o => (UFL.length ? `<div><i style="background:none;border:0;border-top:1.5px solid var(--ink);opacity:.6;height:0"></i>limite de UF</div>` : '') + (BIOMA.length ? `<div><i style="background:none;border:0;border-top:2px dashed var(--mut);height:0"></i>limite do bioma Caatinga (IBGE 2019)</div>` : '') + ptsLeg(o);
 function legendHTML(o) {
-  if (o.blank) { const k = o.cods.filter(c => o.inSet.has(c)).length; return `<b>${esc(o.title)}</b><div><i style="background:var(--blank)"></i>no recorte <span class="u">(${k})</span></div>` + (o.cods.length > k ? `<div><i style="background:var(--out)"></i>fora do recorte <span class="u">(${o.cods.length - k})</span></div>` : '') + biomaLeg() }
+  if (o.blank) { const k = o.cods.filter(c => o.inSet.has(c)).length; return `<b>${esc(o.title)}</b><div><i style="background:var(--blank)"></i>no recorte <span class="u">(${k})</span></div>` + (o.cods.length > k ? `<div><i style="background:var(--out)"></i>fora do recorte <span class="u">(${o.cods.length - k})</span></div>` : '') + biomaLeg(o) }
   const n = o.breaks.length + 1, cnt = Array(n).fill(0); let nd = 0, z = 0, out = 0;
   for (const c of o.cods) { if (!o.inSet.has(c)) { out++; continue } const x = o.vals.get(c); if (x == null) nd++; else if (x === 0) z++; else cnt[clsOf(x, o.breaks)]++ }
   const lab = i => i === 0 ? `até ${fmt(o.breaks[0])}` : i === n - 1 ? `acima de ${fmt(o.breaks[n - 2])}` : `${fmt(o.breaks[i - 1])} – ${fmt(o.breaks[i])}`;
@@ -281,9 +302,20 @@ function legendHTML(o) {
   if (z) h += `<div><i style="background:var(--zero)"></i>zero <span class="u">(${z})</span></div>`; if (nd) h += `<div><i style="background:var(--nd)"></i>sem dado na fonte <span class="u">(${nd})</span></div>`;
   if (out && o.showOut) h += `<div><i style="background:var(--out)"></i>fora do recorte <span class="u">(${out})</span></div>`;
   if (o.hatch) h += `<div><i style="background:repeating-linear-gradient(45deg,var(--ink) 0 1.5px,transparent 1.5px 5px)"></i>hachura: ${esc(o.hatchLabel)} <span class="u">(${[...o.hatch].filter(c => o.inSet.has(c)).length})</span></div>`;
-  return h + biomaLeg()
+  return h + biomaLeg(o)
 }
 const flabel = fs => fs.map(f => V[f.v].bin ? `${V[f.v].l}: ${f.x ? 'sim' : 'não'}` : `${V[f.v].l}${f.ag ? ' — ' + AG[f.ag] : ''} ${OPS[f.op]} ${fmt(f.x)} ${V[f.v].u}`).join(' e ');
+
+// ---------- métrica automática recorte × hachura (seção 19.5) ----------
+// Recorte = municípios no mapa; hachura = municípios da UF do topo que atendem à condição da hachura (dentro ou fora do recorte)
+function hatchMetric(cods, inSet, hatch, hlab) {
+  if (!hatch) return '';
+  const Y = cods.filter(c => hatch.has(c)).length, X = inSet.size, A = cods.filter(c => inSet.has(c) && hatch.has(c)).length;
+  return `<div class="hm"><div class="hmt"><b>Recorte × hachura</b><span>${esc(hlab || '')}</span></div><div class="hmg">
+ <div><span>Recorte</span><b>${nf0.format(X)}</b></div><div><span>Hachura</span><b>${nf0.format(Y)}</b></div>
+ <div class="hmA"><span>Coincidência (nos dois)</span><b>${nf0.format(A)}</b><em>${pc(A, X)} do recorte · ${pc(A, Y)} da hachura</em></div>
+ <div><span>Só no recorte</span><b>${nf0.format(X - A)}</b></div><div><span>Só na hachura</span><b>${nf0.format(Y - A)}</b><em>fora do mapa</em></div></div></div>`
+}
 
 // ---------- construtor de mapas ----------
 let MBID = 0;
@@ -306,7 +338,7 @@ function MapBuilder(el, { keys, filterKeys, agSel, geoAgg }) {
  <div class="box b4 off" data-b="4"><div class="bh"><span class="n">4</span>Hachura<button class="clr" data-clr="4" hidden>Remover</button></div>
   <button class="btn add" data-addh disabled>+ Adicionar variável secundária?</button><div data-h hidden></div></div>
  <div class="fr"><button class="clr" data-clr="all" style="--bc:var(--ink)">Limpar tudo</button><button class="btn" data-cp>Copiar visão (JSON)</button><button class="btn" data-csv>Copiar tabela (CSV)</button></div><pre data-j hidden></pre></div>
- <div><div class="map" data-map></div><div class="leg" data-leg></div><h3 data-th></h3><div class="scroll tall"><table data-t></table></div></div></div>`;
+ <div><div class="map" data-map></div><div class="leg" data-leg></div><div data-hm></div><h3 data-th></h3><div class="scroll tall"><table data-t></table></div></div></div>`;
   const qs = s => el.querySelector(s), render = () => api.render();
   const fl = FilterList(qs('[data-f]'), filterKeys, render, 'Municípios que atendem a todas as condições:');
   const hl = FilterList(qs('[data-h]'), filterKeys, render, 'Municípios com esta característica recebem hachura:', true); hl.set([{ v: 'pronafb', ag: '', op: '>', x: 30 }]); hl.on = false;
@@ -336,7 +368,7 @@ function MapBuilder(el, { keys, filterKeys, agSel, geoAgg }) {
     render() {
       const cods = universe(), fs = st.rc === 'sel' ? fl.get() : [], inSet = new Set(st.rc ? cods.filter(c => passes(c, fs)) : cods);
       if (!st.v) {
-        const o = { cods, inSet, showOut: true, blank: true, vals: new Map(), title: st.rc ? 'Recorte de municípios' : 'Mapa em branco — comece pelo recorte' }; drawMap(qs('[data-map]'), o); qs('[data-leg]').innerHTML = legendHTML(o);
+        const o = { cods, inSet, showOut: true, blank: true, vals: new Map(), title: st.rc ? 'Recorte de municípios' : 'Mapa em branco — comece pelo recorte' }; drawMap(qs('[data-map]'), o); qs('[data-leg]').innerHTML = legendHTML(o); qs('[data-hm]').innerHTML = '';
         qs('[data-th]').textContent = st.rc ? `${inSet.size} municípios no recorte${fs.length ? ': ' + flabel(fs) : ''}` : ''; qs('[data-t]').innerHTML = ''; last = []; api.view = { recorte: st.rc, filtros_municipio: fl.json() }; return
       }
       const v = V[st.v], ag = v.ag ? agSel() : '', g = v.geo ? geoAgg() : null;
@@ -351,7 +383,7 @@ function MapBuilder(el, { keys, filterKeys, agSel, geoAgg }) {
       const hs = hl.get(), hatch = hs.length ? new Set(cods.filter(c => passes(c, hs))) : null;
       const title = v.l + (ag ? ' — ' + AG[ag] : '') + (v.ag === 'need' && !ag ? ' (escolha um agrupamento no topo da aba)' : '');
       const o = { cods, inSet, showOut: true, vals, breaks, colors, hatch, hatchLabel: flabel(hs), unit, title };
-      drawMap(qs('[data-map]'), o); qs('[data-leg]').innerHTML = legendHTML(o);
+      drawMap(qs('[data-map]'), o); qs('[data-leg]').innerHTML = legendHTML(o); qs('[data-hm]').innerHTML = hatchMetric(cods, inSet, hatch, flabel(hs));
       last = cods.filter(c => inSet.has(c)).map(c => [c, vals.get(c)]).sort((a, b) => (b[1] ?? -1e18) - (a[1] ?? -1e18));
       qs('[data-th]').textContent = `${inSet.size} municípios no recorte${fs.length ? ': ' + flabel(fs) : ''} — do maior para o menor`;
       qs('[data-t]').innerHTML = `<thead><tr><th>Município</th><th>UF</th><th>${esc(title)} (${esc(unit)})</th>${hatch ? '<th>Hachura</th>' : ''}</tr></thead><tbody>` + last.slice(0, 200).map(([c, x]) => { const r = RM.get(c); return `<tr><td>${esc(r.municipio)}</td><td>${r.uf}</td><td>${fmt(x)}</td>${hatch ? `<td>${hatch.has(c) ? 'sim' : ''}</td>` : ''}</tr>` }).join('') + '</tbody>';
@@ -494,7 +526,29 @@ function usoBlock(t, uso) { // quadro de uso da terra
   }).join('');
 }
 // ---------- aba 4 ----------
-let intU, intF, intSt = { m: 'q5', p: 'lr', fx: '', mv: 'n' };
+let intU, intF, intH, intSt = { m: 'q5', p: 'lr', fx: '', mv: 'n', h: false };
+// Barras de composição por tipologia no painel fixo (seção 19.1): imóveis e área pot. degradada, com os três agrupamentos
+const TIPGC = { af: '#2f7d4a', hib: '#c4761a', eco: '#2b5f93' };
+let COMP_T = [];
+function compBars(t) { // t: [{n, area, deg}] na ordem de TIP
+  const row = (k, lab, u) => {
+    const T = t.reduce((a, x) => a + x[k], 0); if (!T) return `<div class="cb"><div class="cbl">${lab}</div><p class="hint">Sem imóveis na seleção.</p></div>`;
+    const seg = t.map((x, i) => { const w = 100 * x[k] / T; return w <= 0 ? '' : `<i data-ti="${i}" style="width:${w}%;background:${TIPC[i]}">${w >= 7 ? esc(TIP[i]) : ''}</i>` }).join('');
+    const grp = TIPG.map(([g, gl, ix]) => { const v = ix.reduce((a, i) => a + t[i][k], 0), w = 100 * v / T; return w <= 0 ? '' : `<span style="width:${w}%;--gc:${TIPGC[g]}" title="${esc(gl)}: ${pc(v, T)}">${w >= 12 ? esc(gl) + ' ' + pc(v, T) : w >= 5 ? pc(v, T) : ''}</span>` }).join('');
+    return `<div class="cb"><div class="cbl">${lab} <em>${nf0.format(T)} ${u}</em></div><div class="cbg">${grp}</div><div class="cbb">${seg}</div></div>`
+  };
+  const med = TIPG.map(([g, gl, ix]) => {
+    const n = ix.reduce((a, i) => a + t[i].n, 0), ar = ix.reduce((a, i) => a + t[i].area, 0), dg = ix.reduce((a, i) => a + t[i].deg, 0);
+    return `<div style="--gc:${TIPGC[g]}"><b>${esc(gl)}</b><span>${n ? fmt(ar / n) + ' ha' : '—'} <em>área média</em></span><span>${n ? fmt(dg / n) + ' ha' : '—'} <em>degradada média</em></span></div>`
+  }).join('');
+  return `<div class="comp"><div class="comph"><b>Composição da seleção por tipologia</b><button class="info" data-fig="tip" type="button">ⓘ Como foi classificado</button></div>${row('n', 'Imóveis', 'imóveis')}${row('deg', 'Área pot. degradada', 'ha')}<div class="cbm">${med}</div><div class="cbtip" hidden></div></div>`
+}
+// Dicionário das classes dos pontos ao lado da legenda (seção 19.2): só com pontos selecionados
+function ptsDic(inSet) {
+  if (!PTS_SEL.size) return '';
+  const U = ptsU().filter(p => PTS_SEL.has(p.id)), noMapa = new Set(PTS.filter(p => PTS_SEL.has(p.id) && inSet.has(p.codmun)).map(p => p.id));
+  return `<div class="pdic"><b>Pontos das entrevistas</b>${['A', 'B', 'C', 'D'].map(c => { const n = U.filter(p => p.classe === c).length, m = U.filter(p => p.classe === c && noMapa.has(p.id)).length; return `<div${n ? '' : ' class="z"'}><i style="background:${PCL[c]}"></i><b>${c}</b><span>${PCD[c]}</span><em title="no mapa / selecionados">${m}/${n}</em></div>` }).join('')}<div class="pdicn">no mapa / selecionados · ○ contorno vazio = região aproximada</div></div>`
+}
 async function integ() {
   if (!status.imoveis) return;
   const cods = universe(), fs = intSt.rc === 'sel' ? intU.get() : [], uni = new Set(cods.filter(c => passes(c, fs))), fi = intF.get();
@@ -506,6 +560,7 @@ async function integ() {
   const sh = (a, b) => b ? ` <em>(${nf.format(100 * a / b)}%)</em>` : '';
   const card = (l, k, u) => `<div class="kc"><span class="l">${l}</span><b>${nf0.format(s2[k])}${u}</b><div class="f">${UF || 'Caatinga'} ${nf0.format(s0[k])} → recorte ${nf0.format(s1[k])}${sh(s1[k], s0[k])} → filtros ${nf0.format(s2[k])}${sh(s2[k], s0[k])}</div></div>`;
   $('k-int').innerHTML = card('Municípios', 'm', '') + card('Imóveis', 'n', '') + card('Área dos imóveis', 'area', ' ha') + card('Área pot. degradada', 'deg', ' ha');
+  const tipSel = sumBy(agg.tip, uni, TIP); COMP_T = TIP.map(k => tipSel.get(k)); $('comp-int').innerHTML = compBars(COMP_T);
   // impacto de cada condição do recorte (quantos municípios ela elimina sozinha)
   intU.impact(f => { const k = cods.filter(c => !passes(c, [f])).length; return `elimina ${nf0.format(k)}` });
   // etiquetas das condições ativas
@@ -516,32 +571,47 @@ async function integ() {
   // mapa único com alternância
   const vals = new Map(); for (const c of uni) { const o = agg.by.get(c); vals.set(c, o ? (intSt.mv === 'n' ? o.n : o.deg) : 0) }
   const b = breaksFor([...vals.values()], intSt.m, intSt.fx), unit = intSt.mv === 'n' ? 'n' : 'ha', title = intSt.mv === 'n' ? 'Imóveis' : 'Área pot. degradada';
-  const o = { cods, inSet: uni, showOut: false, vals, breaks: b, colors: ramp(intSt.p, b.length + 1), hatch: null, unit, title };
-  drawMap($('m1'), o); $('l1').innerHTML = legendHTML(o);
-  tipTable($('tip-int'), sumBy(agg.tip, uni, TIP), agg.uso);
-  intSt.view = { uf: UF || null, universo_municipios: intU.json(), filtros_imovel: intF.json(), mapa: intSt.mv, legenda: intSt.m, limites_fixos: intSt.m === 'fx' ? intSt.fx : null, paleta: intSt.p };
+  const hs = intSt.h ? intH.get() : [], hatch = hs.length ? new Set(cods.filter(c => passes(c, hs))) : null;
+  const o = { cods, inSet: uni, showOut: false, noPtsLeg: true, vals, breaks: b, colors: ramp(intSt.p, b.length + 1), hatch, hatchLabel: flabel(hs), unit, title };
+  drawMap($('m1'), o); $('l1').innerHTML = legendHTML(o); $('pdic-int').innerHTML = ptsDic(uni); $('hm-int').innerHTML = hatchMetric(cods, uni, hatch, flabel(hs));
+  tipTable($('tip-int'), tipSel, agg.uso);
+  intSt.view = { uf: UF || null, universo_municipios: intU.json(), filtros_imovel: intF.json(), hachura: intSt.h ? intH.json() : [], pontos_selecionados: [...PTS_SEL], mapa: intSt.mv, legenda: intSt.m, limites_fixos: intSt.m === 'fx' ? intSt.fx : null, paleta: intSt.p };
 }
 
-// Arranjos já existentes (APLs): mapa categórico estático por grupo de setor e lista (aba 4; segue só a UF do topo)
-const APL_MULT = '#3b2a6e';
-function apls() {
-  if (!APL.length) { $('apl-int').innerHTML = '<p class="hint">Falta data/apl_municipio.parquet (scripts/preparar_apl.py).</p>'; return }
-  const cods = universe(), cs = new Set(cods), cat = new Map(), lab = new Map(), cnt = new Map(), GC = Object.fromEntries(APLG.map(([k, l, c]) => [k, [l, c]]));
-  for (const c of cods) {
-    const g = [...new Set(aplOf(c).map(a => a.setor_grupo))]; if (!g.length) continue;
-    const k = g.length > 1 ? 'mult' : g[0]; cat.set(c, k === 'mult' ? APL_MULT : GC[k][1]); cnt.set(k, (cnt.get(k) || 0) + 1);
-    lab.set(c, aplOf(c).map(a => `${a.nome_apl} (${GC[a.setor_grupo][0].toLowerCase()})`).join('; '));
+// Arranjos já existentes: APLs × pontos das entrevistas (seção 19.4; substitui o mapa categórico e a lista de APLs)
+// RASCUNHO de correspondência setor do APL → arranjos das entrevistas (pela cadeia citada), a revisar por Pedro
+const CORR = { apicultura: ['13', '4', '6'], caprinovinocultura: ['12', '16', '4'], bovinocultura: ['17'], fruticultura: ['1', '4', '6'], agricultura: ['3', '4', '8', '14', '18', '21'], textil: ['14', '15'], avicultura: [], pesca: [], mineral: [], turismo: [], outros: [] };
+const aplSt = { s: 'apicultura', id: '' };
+function aplCmp() {
+  const el = $('apl-cmp');
+  if (!APL.length) { el.innerHTML = '<p class="hint">Falta data/apl_municipio.parquet (scripts/preparar_apl.py).</p>'; return }
+  const cods = universe(), cs = new Set(cods), inUF = APL.filter(a => cs.has(a.codmun));
+  const setores = APLG.map(([k, l, c]) => [k, l, c, new Set(inUF.filter(a => a.setor_grupo === k).map(a => a.apl_id)).size]);
+  if (!setores.find(x => x[0] === aplSt.s && x[3])) aplSt.s = (setores.find(x => x[3]) || setores[0])[0];
+  const S = setores.find(x => x[0] === aplSt.s), apls = [...new Map(inUF.filter(a => a.setor_grupo === aplSt.s).map(a => [String(a.apl_id), a.nome_apl])).entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt'));
+  if (aplSt.id && !apls.some(([i]) => i === aplSt.id)) aplSt.id = '';
+  const mset = new Set(inUF.filter(a => a.setor_grupo === aplSt.s && (!aplSt.id || String(a.apl_id) === aplSt.id)).map(a => a.codmun));
+  const ids = new Set(CORR[aplSt.s] || []), locs = PTS.filter(p => ids.has(p.id) && cs.has(p.codmun)), orgs = [...new Set(locs.map(p => p.id))];
+  const dentro = orgs.filter(i => locs.some(p => p.id === i && mset.has(p.codmun))), fora = orgs.filter(i => !dentro.includes(i));
+  const nomeSel = aplSt.id ? apls.find(([i]) => i === aplSt.id)[1] : 'APLs de ' + S[1].toLowerCase();
+  if (!el.dataset.ok) {
+    el.dataset.ok = 1;
+    el.innerHTML = `<div class="aplq"><div class="box b2"><div class="bh"><span class="n">?</span>Pergunta</div><div class="fr"><label>Setor do APL <select data-as></select></label><label>APL específico <select data-ai></select></label></div><div data-am></div></div><div><div class="map" id="m-apl"></div><div class="leg" id="l-apl"></div></div></div>`;
+    el.addEventListener('change', e => { if (e.target.dataset.as != null) { aplSt.s = e.target.value; aplSt.id = '' } if (e.target.dataset.ai != null) aplSt.id = e.target.value; aplCmp() });
+    new ResizeObserver(() => { if ($('m-apl').offsetParent) aplCmp() }).observe($('m-apl'));
   }
-  const o = { cods, inSet: cs, showOut: false, vals: lab, cat, breaks: [], colors: [], title: 'APLs por setor' };
+  el.querySelector('[data-as]').innerHTML = setores.map(([k, l, c, n]) => `<option value="${k}"${k === aplSt.s ? ' selected' : ''}${n ? '' : ' disabled'}>${esc(l)} (${n} APL${n === 1 ? '' : 's'})</option>`).join('');
+  el.querySelector('[data-ai]').innerHTML = opt('', 'Todos do setor (' + apls.length + ')', !aplSt.id) + apls.map(([i, n]) => opt(i, n, i === aplSt.id)).join('');
+  const nm = i => { const p = PTS.find(x => x.id === i); return `#${esc(i)} ${esc(p.org)}` };
+  const li = (arr, ok) => arr.map(i => `<li class="${ok ? 'in' : 'out'}">${nm(i)} <em>${esc([...new Set(locs.filter(p => p.id === i).map(p => p.mun + '/' + p.uf))].join(', '))}</em></li>`).join('');
+  const comPonto = new Set(locs.filter(p => mset.has(p.codmun)).map(p => p.codmun)).size;
+  el.querySelector('[data-am]').innerHTML = `<div class="amr"><div><span>${esc(nomeSel)}</span><b>${nf0.format(mset.size)}</b><em>municípios${UF ? ' em ' + UF : ''}</em></div><div><span>Pontos mapeados da cadeia</span><b>${orgs.length}</b><em>${locs.length} locais</em></div><div class="ok"><span>Dentro dos municípios do APL</span><b>${dentro.length}</b></div><div class="no"><span>Fora</span><b>${fora.length}</b></div></div>
+  <p class="ams">${orgs.length ? `<b>${dentro.length} de ${orgs.length}</b> arranjos citados nas entrevistas ligados a ${esc(S[1].toLowerCase())} estão em município com ${aplSt.id ? 'esse APL' : 'APL do setor'}.` : 'Nenhum arranjo das entrevistas ligado a este setor.'} ${mset.size ? `${nf0.format(mset.size - comPonto)} dos ${nf0.format(mset.size)} municípios do APL não têm ponto mapeado.` : ''}</p>
+  ${orgs.length ? `<ul class="aml">${li(dentro, 1)}${li(fora, 0)}</ul>` : ''}<p class="hint">Correspondência setor → arranjos é um <b>rascunho para revisão</b>: ${esc(S[1])} = ${[...ids].map(i => '#' + i).join(', ') || 'nenhum'}. Só entram os arranjos com local no mapa.</p>`;
+  const o = { cods, inSet: cs, showOut: false, vals: new Map(cods.map(c => [c, mset.has(c) ? 1 : 0])), breaks: [0.5], colors: ['var(--blank)', S[2]], hatch: null, unit: '', title: nomeSel,
+    pts: p => ids.has(p.id) ? (mset.has(p.codmun) ? { fill: '#1a7f3c', stroke: '#fff', w: 1.5 } : { fill: '#fff', stroke: '#d73027', w: 2.5 }) : null };
   drawMap($('m-apl'), o);
-  const sem = cods.length - cat.size;
-  $('l-apl').innerHTML = `<b>Municípios por setor do APL</b>` + APLG.filter(([k]) => cnt.get(k)).sort((a, b) => cnt.get(b[0]) - cnt.get(a[0])).map(([k, l, c]) => `<div><i style="background:${c}"></i>${l} <span class="u">(${cnt.get(k)})</span></div>`).join('') +
-    (cnt.get('mult') ? `<div><i style="background:${APL_MULT}"></i>dois ou mais setores <span class="u">(${cnt.get('mult')})</span></div>` : '') + `<div><i style="background:var(--zero)"></i>sem APL <span class="u">(${sem})</span></div>` + biomaLeg();
-  const by = new Map(); for (const a of APL) if (cs.has(a.codmun)) { let x = by.get(a.apl_id); if (!x) by.set(a.apl_id, x = { ...a, muns: [] }); x.muns.push(RM.get(a.codmun)?.municipio || a.codmun) }
-  const L = [...by.values()].sort((a, b) => b.muns.length - a.muns.length || a.nome_apl.localeCompare(b.nome_apl, 'pt'));
-  $('h-apl').textContent = `${L.length} APLs em ${cat.size} dos ${cods.length} municípios${UF ? ' da UF' : ''}`;
-  $('t-apl').innerHTML = '<thead><tr><th>APL</th><th>Setor (planilha)</th><th>Grupo</th><th>UF</th><th>Cidade polo</th><th>Municípios na base</th></tr></thead><tbody>' +
-    L.map(a => `<tr><td style="white-space:normal">${esc(a.nome_apl)}</td><td style="white-space:normal;text-align:left">${esc(a.setor)}</td><td style="text-align:left"><span class="dot" style="--bc:${GC[a.setor_grupo][1]}"></span>${esc(GC[a.setor_grupo][0])}</td><td>${a.uf}</td><td style="text-align:left">${esc(a.cidade_polo)}</td><td style="white-space:normal;text-align:left" title="${esc(a.muns.join(', '))}">${a.muns.length}: ${esc(a.muns.slice(0, 6).join(', '))}${a.muns.length > 6 ? '…' : ''}</td></tr>`).join('') + '</tbody>';
+  $('l-apl').innerHTML = `<div><i style="background:${S[2]}"></i>município com ${aplSt.id ? 'o APL escolhido' : 'APL do setor'} <span class="u">(${mset.size})</span></div><div><i style="background:var(--zero)"></i>sem <span class="u">(${cods.length - mset.size})</span></div><div><i style="background:#1a7f3c;border-radius:50%;width:13px"></i>arranjo da cadeia dentro</div><div><i style="background:#fff;border:2.5px solid #d73027;border-radius:50%;width:13px"></i>arranjo da cadeia fora</div>` + biomaLeg(o);
 }
 
 // ---------- inicialização ----------
@@ -549,7 +619,7 @@ let mbI, mbS, mbG;
 async function renderAll() {
   ibge(); sicor(); const vis = document.querySelector('.pane:not([hidden])').id;
   if (vis === 'p-ibge') mbI.render(); if (vis === 'p-sicor') mbS.render();
-  if (vis === 'p-geo') { await geo(); mbG.render() } if (vis === 'p-int') { apls(); await integ() }
+  if (vis === 'p-geo') { await geo(); mbG.render() } if (vis === 'p-int') { aplCmp(); await integ() }
 }
 // Visão da aba aberta, anexada ao feedback (seção 10.1) para a equipe reproduzir o que o usuário via
 function visaoAtual() {
@@ -577,7 +647,7 @@ async function main() {
   UFL = g.uf || limitesUF(); // linhas fixas de UF: da malha (g.uf) ou derivadas das bordas compartilhadas entre municípios de UFs diferentes
   for (const r of R) RM.set(r.codmun, r);
   // Agregação "todos os imóveis" em cache (recortes com variáveis geo e variáveis geo nas abas 1 e 2)
-  if (status.pontos) PTS = await q(`SELECT id, organizacao AS org, classe, cadeia, local_citado AS local, precisao AS prec, codmun, municipio AS mun, uf, lat::DOUBLE AS lat, lon::DOUBLE AS lon
+  if (status.pontos) PTS = await q(`SELECT id, observacao AS obs, organizacao AS org, classe, cadeia, local_citado AS local, precisao AS prec, codmun, municipio AS mun, uf, lat::DOUBLE AS lat, lon::DOUBLE AS lon
     FROM arranjos_pontos WHERE precisao <> 'sem_local' AND coalesce(lat, '') <> '' AND coalesce(lon, '') <> '' ORDER BY id::INT, codmun`);
   if (status.apl) { APL = await q('SELECT * FROM apl_municipio ORDER BY apl_id, codmun'); for (const a of APL) (APLM.get(a.codmun) || APLM.set(a.codmun, []).get(a.codmun)).push(a) }
   if (status.imoveis) BASEAGG = await aggAll(null);
@@ -596,13 +666,16 @@ async function main() {
   $('fl-int').addEventListener('change', e => { if (e.target.name === 'rc-int') { intSt.rc = e.target.value; $('fl-int').querySelector('[data-f]').hidden = intSt.rc !== 'sel'; integ() } });
   $('fl-int').addEventListener('click', e => { if (e.target.dataset.clr == null) return; intU.set([]); intSt.rc = 'todos'; $('fl-int').querySelector('[value=todos]').checked = true; $('fl-int').querySelector('[data-f]').hidden = true; integ() });
   intF = ImovelFilters($('if-int'), integ);
-  $('ctl-int').innerHTML = `<div class="box b3" style="max-width:640px"><div class="bh"><span class="n">3</span>Legenda do mapa<button class="clr" data-clr>Limpar</button></div><div class="fr">${legendCtl()}</div></div>`;
-  $('ctl-int').addEventListener('change', e => { const k = e.target.dataset.k; if (k) { intSt[k] = e.target.value; $('ctl-int').querySelector('[data-fx]').hidden = intSt.m !== 'fx'; integ() } });
-  $('ctl-int').addEventListener('input', e => { if (e.target.dataset.k === 'fx') { intSt.fx = e.target.value; integ() } });
+  $('ctl-int').innerHTML = `<div class="box b3" style="max-width:640px"><div class="bh"><span class="n">3</span>Legenda do mapa<button class="clr" data-clr>Limpar</button></div><div class="fr">${legendCtl()}</div></div>
+  <div class="box b4" style="max-width:640px;margin-top:12px"><div class="bh"><span class="n">4</span>Hachura (variável auxiliar)<button class="clr" data-clrh hidden>Remover</button></div><p class="hint">Marca com hachura os municípios do mapa que também atendem a outra condição, por exemplo ter APL. Ao lado do mapa sai a coincidência entre recorte e hachura.</p><button class="btn add" data-addh>+ Adicionar hachura</button><div data-h hidden></div></div>`;
+  intH = FilterList($('ctl-int').querySelector('[data-h]'), all, integ, 'Municípios com esta característica recebem hachura:', true); intH.set([{ v: 'tem_apl', ag: '', op: '>=', x: 1 }]); intH.on = false;
+  const hUI = () => { const c = $('ctl-int'); c.querySelector('[data-addh]').hidden = intSt.h; c.querySelector('[data-h]').hidden = !intSt.h; c.querySelector('[data-clrh]').hidden = !intSt.h };
+  $('ctl-int').addEventListener('click', e => { if (e.target.dataset.addh != null) { intSt.h = true; intH.on = true; hUI(); integ() } if (e.target.dataset.clrh != null) { intSt.h = false; intH.on = false; hUI(); integ() } });
+  $('ctl-int').addEventListener('change', e => { if (e.target.closest('[data-h]')) return; const k = e.target.dataset.k; if (k) { intSt[k] = e.target.value; $('ctl-int').querySelector('[data-fx]').hidden = intSt.m !== 'fx'; integ() } });
+  $('ctl-int').addEventListener('input', e => { if (e.target.closest('[data-h]')) return; if (e.target.dataset.k === 'fx') { intSt.fx = e.target.value; integ() } });
   $('ctl-int').addEventListener('click', e => { if (e.target.dataset.clr == null) return; Object.assign(intSt, { m: 'q5', p: 'lr', fx: '' }); const c = $('ctl-int'); c.querySelector('[data-k=m]').value = 'q5'; c.querySelector('[data-k=p]').value = 'lr'; c.querySelector('[data-k=fx]').value = ''; c.querySelector('[data-fx]').hidden = true; integ() });
   $('cp-int').onclick = () => { const t = JSON.stringify(intSt.view, null, 1); $('vj-int').hidden = false; $('vj-int').textContent = t; navigator.clipboard?.writeText(t).catch(() => { }) };
   new ResizeObserver(() => { if ($('m1').offsetParent) integ() }).observe($('m1'));
-  new ResizeObserver(() => { if ($('m-apl').offsetParent) apls() }).observe($('m-apl'));
   document.querySelector('#p-int .seg').addEventListener('click', e => { const v = e.target.dataset.mv; if (!v) return; intSt.mv = v; document.querySelectorAll('#p-int .seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mv === v)); integ() });
   $('chips-int').addEventListener('click', e => { const i = e.target.dataset.rmf; if (i != null) intU.remove(+i) });
   const setBar = () => document.documentElement.style.setProperty('--barh', document.querySelector('.bar').offsetHeight + 'px'); setBar(); new ResizeObserver(setBar).observe(document.querySelector('.bar'));
@@ -613,11 +686,29 @@ async function main() {
     document.querySelectorAll('.pane').forEach(p => p.hidden = p.id !== 'p-' + b.dataset.p); if (b.dataset.p !== 'sql') renderAll()
   }));
   document.addEventListener('click', e => {
-    if (e.target.closest('[data-pts]')) { PTS_ON = !PTS_ON; renderAll() }
+    if (e.target.closest('[data-ptsopen]')) { PTS_OPEN = !PTS_OPEN; if (!PTS_OPEN) PTS_Q = ''; const m = e.target.closest('.map'); renderAll().then(() => { if (PTS_OPEN) m?.querySelector('[data-ptsq]')?.focus() }); return }
+    if (e.target.closest('[data-ptsall]')) { e.target.closest('.ptspan').querySelectorAll('label[data-ptxt]:not([hidden]) input').forEach(i => PTS_SEL.add(i.dataset.ptsid)); renderAll(); return }
+    if (e.target.closest('[data-ptsnone]')) { PTS_SEL.clear(); renderAll(); return }
+    if (PTS_OPEN && !e.target.closest('.ptswrap')) { PTS_OPEN = false; PTS_Q = ''; renderAll() }
     const fb = e.target.closest('[data-fig]'); if (fb) { e.preventDefault(); openFig(fb.dataset.fig) }
     const pb = e.target.closest('[data-pie]'); if (pb) { pieM = pb.dataset.pie; document.querySelectorAll('[data-pie]').forEach(b => b.setAttribute('aria-pressed', b.dataset.pie === pieM)); geo() }
     const ab = e.target.closest('[data-arrf]'); if (ab) { arrfM = ab.dataset.arrf; document.querySelectorAll('[data-arrf]').forEach(b => b.setAttribute('aria-pressed', b.dataset.arrf === arrfM)); geo() }
   });
+  document.addEventListener('change', async e => {
+    const id = e.target.dataset?.ptsid; if (id == null) return; e.target.checked ? PTS_SEL.add(id) : PTS_SEL.delete(id);
+    const m = e.target.closest('.map'), mid = m?.id || null, y = m?.querySelector('.ptslist')?.scrollTop; await renderAll();
+    const l = (mid ? $(mid) : document).querySelector('.ptslist'); if (l && y != null) l.scrollTop = y
+  });
+  document.addEventListener('input', e => { if (e.target.dataset?.ptsq == null) return; PTS_Q = e.target.value; ptsFilter(e.target.closest('.ptspan')) });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && PTS_OPEN) { PTS_OPEN = false; PTS_Q = ''; renderAll() } });
+  // dica das barras de composição (aba 4)
+  $('comp-int').addEventListener('mousemove', e => {
+    const s_ = e.target.closest('[data-ti]'), tp = $('comp-int').querySelector('.cbtip'); if (!tp) return; if (!s_) { tp.hidden = true; return }
+    const t = COMP_T, i = +s_.dataset.ti, x = t[i], Tn = t.reduce((a, y) => a + y.n, 0), Td = t.reduce((a, y) => a + y.deg, 0), gl = TIPG.find(g => g[2].includes(i))[1];
+    tp.innerHTML = `<b>${esc(TIP[i])}</b> · ${esc(gl)}<br>${nf0.format(x.n)} imóveis (${pc(x.n, Tn)}) · ${nf0.format(x.deg)} ha degradados (${pc(x.deg, Td)})<br>Área média ${x.n ? fmt(x.area / x.n) : '—'} ha · degradada média ${x.n ? fmt(x.deg / x.n) : '—'} ha`; tp.hidden = false;
+    const b = $('comp-int').getBoundingClientRect(); let lx = e.clientX - b.left + 12; if (lx > b.width - tp.offsetWidth - 4) lx = Math.max(4, e.clientX - b.left - tp.offsetWidth - 12); tp.style.left = lx + 'px'; tp.style.top = (e.clientY - b.top + 14) + 'px'
+  });
+  $('comp-int').addEventListener('mouseleave', () => { const tp = $('comp-int').querySelector('.cbtip'); if (tp) tp.hidden = true });
   $('fig-x').onclick = figClose; $('fig-ov').addEventListener('click', e => { if (e.target.id === 'fig-ov') figClose() });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('fig-ov').hidden) figClose() });
   $('fig-exp').onclick = () => { const m = document.querySelector('.figm'), f = m.classList.toggle('full'); $('fig-ov').classList.toggle('fig-ov-full', f); $('fig-exp').textContent = f ? 'Reduzir' : 'Expandir' };

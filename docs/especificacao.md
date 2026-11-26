@@ -383,9 +383,9 @@ O protótipo foi atualizado (v10). Mudanças na aba 3:
 - **Hoje** as divisas são derivadas no navegador (`limitesUF()`) das bordas compartilhadas entre municípios de UFs diferentes na malha. Cobrem todas as divisas dentro da malha: PI-CE, PI-PE, PI-BA, CE-RN, CE-PB, CE-PE, RN-PB, PB-PE, PE-AL, PE-BA, AL-SE, AL-BA, SE-BA e BA-MG.
 - **Melhoria opcional:** rodar `scripts/preparar_malha.py` com `BR_UF_2022.zip` do IBGE no mesmo diretório. A malha passa a ter `uf` com as divisas completas (`-innerlines`, recortadas na caixa do bioma + 1°), inclusive fora da malha municipal, e o BI usa essa camada automaticamente.
 
-## 19. Em revisão: protótipo v13 (26/11/2026), ainda não implementar no BI
+## 19. Protótipo v13 (26/11/2026): aprovado por Pedro e implementado no BI no mesmo dia
 
-Pedidos de Pedro de 25/11, feitos no protótipo (`prototipo/`, artifact v13) para aprovação:
+Pedidos de Pedro de 25/11, feitos primeiro no protótipo (`prototipo/`, artifact v13). Implementados em `js/app.js` e `index.html`. A correspondência setor → arranjos (item 4) continua como rascunho até a revisão de Pedro (constante `CORR`).
 
 1. **Aba 4, barras de composição no painel fixo** (entre os cards e o mapa)
    - Duas barras por tipologia: imóveis e área potencialmente degradada.
