@@ -19,7 +19,7 @@ const PAL={lr:['Laranja → roxo',['#fde0b6','#f6a75f','#d9744a','#a3568a','#6b4
 const METH={q4:'Quartis',q5:'Quintis',q10:'Decis',eq:'Intervalos iguais (5)',jk:'Quebras naturais (5)',fx:'Limites fixos'};
 const OPS={'>':'>','>=':'≥','<':'<','<=':'≤'};
 
-let PTS=[],PTS_SEL=new Set(),PTS_OPEN=false,PTS_Q='';const PCL={A:'#1a7f3c',B:'#2f6fb0',C:'#c4761a',D:'#7a5a8c'},PRL={municipio:'município citado',municipio_inferido:'município inferido (conferir)',regiao_aprox:'região aproximada'};
+let PTS=[],PTSALL=[],PTS_SEL=new Set(),PTS_OPEN=false,PTS_Q='';const PCL={A:'#1a7f3c',B:'#2f6fb0',C:'#c4761a',D:'#7a5a8c'},PRL={municipio:'município citado',municipio_inferido:'município inferido (conferir)',regiao_aprox:'região aproximada'};
 let R=[],RM=new Map(),UF='',UFS=[],POLY={},AREA=new Map(),IM=null,BASEAGG=null;
 
 // ---------- variáveis municipais ----------
@@ -166,6 +166,8 @@ function ptsPanel(U){const q=norm(PTS_Q);
  ['A','B','C','D'].map(c=>{const it=U.filter(p=>p.classe===c);return `<div class="ptsg" data-cls="${c}"><div class="ptsgh"><i style="background:${PCL[c]}"></i><b>${c}</b> ${PCD[c]}</div>`+
   it.map(p=>`<label data-ptxt="${esc(ptsTxt(p))}"${q&&!ptsTxt(p).includes(q)?' hidden':''}><input type="checkbox" data-ptsid="${p.id}"${PTS_SEL.has(p.id)?' checked':''}> <span>#${p.id} ${esc(p.org)} <em>${esc(p.cadeia)}</em></span></label>`).join('')+'</div>'}).join('')+`</div></div>`}
 function ptsFilter(panel){const q=norm(PTS_Q);panel.querySelectorAll('label[data-ptxt]').forEach(l=>l.hidden=!!q&&!l.dataset.ptxt.includes(q));panel.querySelectorAll('.ptsg').forEach(g=>g.hidden=!g.querySelector('label:not([hidden])'))}
+// centroide (lon/lat) do maior anel do município, para o losango da cidade polo
+const CENT=new Map();function centro(c){if(CENT.has(c))return CENT.get(c);let best=null,ba=0;for(const r of POLY[c]||[]){let a=0,cx=0,cy=0;for(let i=0;i<r.length-1;i++){const[x0,y0]=r[i],[x1,y1]=r[i+1],f=x0*y1-x1*y0;a+=f;cx+=(x0+x1)*f;cy+=(y0+y1)*f}if(Math.abs(a)>ba){ba=Math.abs(a);best=[cx/(3*a),cy/(3*a)]}}CENT.set(c,best);return best}
 function drawMap(box,o){ // o:{cods, inSet, showOut, vals:Map, breaks, colors, hatch:Set, unit, title}
  const W=box.clientWidth,H=box.clientHeight;if(!W)return;
  const drawn=o.showOut?o.cods:o.cods.filter(c=>o.inSet.has(c));
@@ -183,11 +185,12 @@ function drawMap(box,o){ // o:{cods, inSet, showOut, vals:Map, breaks, colors, h
  const ptsSty=o.pts||((p)=>PTS_SEL.has(p.id)?{fill:p.prec==='regiao_aprox'?'#fff':PCL[p.classe],stroke:PCL[p.classe],w:p.prec==='regiao_aprox'?2.5:1.5}:null);
  {const dset=new Set(o.showOut?drawn:drawn.filter(c=>o.inSet.has(c))),grp={};
   PTS.forEach((p,i)=>{if(dset.has(p.codmun)&&ptsSty(p))(grp[p.codmun]=grp[p.codmun]||[]).push(i)});
-  for(const ids of Object.values(grp))ids.forEach((i,k)=>{const p=PTS[i],[x,y]=P([p.lon,p.lat]).split(',').map(Number),n=ids.length,dx=n>1?7*Math.cos(2*Math.PI*k/n):0,dy=n>1?7*Math.sin(2*Math.PI*k/n):0,col=PCL[p.classe],oco=p.prec==='regiao_aprox';
-   const cx_=(x+dx).toFixed(1),cy_=(y+dy).toFixed(1),st_=ptsSty(p);g+=`<circle cx="${cx_}" cy="${cy_}" r="8.5" fill="#fff" pointer-events="none"/><circle data-pt="${i}" cx="${cx_}" cy="${cy_}" r="6" style="fill:${st_.fill};stroke:${st_.stroke};stroke-width:${st_.w};cursor:pointer"/>`})}
+  if(o.marks)for(const m of o.marks){if(!dset.has(m.c))continue;const ct=centro(m.c);if(!ct)continue;const[x,y]=P(ct).split(',').map(Number);g+=`<path data-mk="${esc(m.t)}" d="M${x},${y-8}L${x+7},${y}L${x},${y+8}L${x-7},${y}Z" style="fill:#111;stroke:#fff;stroke-width:1.5;cursor:pointer"/>`}
+  for(const ids of Object.values(grp))ids.forEach((i,k)=>{const p=PTS[i],[x,y]=P([p.lon,p.lat]).split(',').map(Number),n=ids.length,off=ptsSty(p).lab?10.5:7,dx=n>1?off*Math.cos(2*Math.PI*k/n):0,dy=n>1?off*Math.sin(2*Math.PI*k/n):0,col=PCL[p.classe],oco=p.prec==='regiao_aprox';
+   const cx_=(x+dx).toFixed(1),cy_=(y+dy).toFixed(1),st_=ptsSty(p),r_=st_.lab?9:6;g+=`<circle cx="${cx_}" cy="${cy_}" r="${r_+2.5}" fill="#fff" pointer-events="none"/><circle data-pt="${i}" cx="${cx_}" cy="${cy_}" r="${r_}" style="fill:${st_.fill};stroke:${st_.stroke};stroke-width:${st_.w};${st_.dash?'stroke-dasharray:3 2;':''}cursor:pointer"/>`+(st_.lab?`<text x="${cx_}" y="${cy_}" dy=".35em" text-anchor="middle" style="font:700 9.5px system-ui,sans-serif;fill:${st_.tc||'#fff'};pointer-events:none">${esc(st_.lab)}</text>`:'')})}
  box.innerHTML=`<svg role="img" aria-label="${esc(o.title||'Mapa municipal')}"${o.blank?' class="blank"':''}>${g}</svg>${PTS.length&&!o.pts?ptsBtn():''}<div class="tip" hidden></div>`;
  const tip=box.querySelector('.tip');
- box.querySelector('svg').onmousemove=e=>{const pi=e.target.dataset?.pt;if(pi!=null){const p=PTS[+pi],b=box.getBoundingClientRect();tip.textContent=`${p.org} · classe ${p.classe} · ${p.cadeia} · ${p.local} (${PRL[p.prec]}${p.prec!=='municipio'?': '+p.mun+'/'+p.uf:''})`;tip.hidden=false;let lx=e.clientX-b.left+12;if(lx>W-tip.offsetWidth-4)lx=Math.max(4,e.clientX-b.left-tip.offsetWidth-12);tip.style.left=lx+'px';tip.style.top=(e.clientY-b.top+12)+'px';return}
+ box.querySelector('svg').onmousemove=e=>{if(e.target.dataset?.mk!=null){const b=box.getBoundingClientRect();tip.textContent=e.target.dataset.mk;tip.hidden=false;tip.style.left=(e.clientX-b.left+12)+'px';tip.style.top=(e.clientY-b.top+12)+'px';return}const pi=e.target.dataset?.pt;if(pi!=null){const p=PTS[+pi],b=box.getBoundingClientRect();tip.textContent=`${p.org} · classe ${p.classe} · ${p.cadeia} · ${p.local} (${PRL[p.prec]}${p.prec!=='municipio'?': '+p.mun+'/'+p.uf:''})`;tip.hidden=false;let lx=e.clientX-b.left+12;if(lx>W-tip.offsetWidth-4)lx=Math.max(4,e.clientX-b.left-tip.offsetWidth-12);tip.style.left=lx+'px';tip.style.top=(e.clientY-b.top+12)+'px';return}
   const c=e.target.dataset?.c;if(!c){tip.hidden=true;return}const r=RM.get(c),x=o.vals.get(c),b=box.getBoundingClientRect();
   tip.textContent=`${r.municipio} (${r.uf})${o.blank?(o.inSet.has(c)?'':' · fora do recorte'):': '+(o.inSet.has(c)?(x==null?'sem dado':fmt(x)+' '+o.unit):'fora do recorte')}${o.hatch&&o.hatch.has(c)?' · hachura':''}`;tip.hidden=false;
   let lx=e.clientX-b.left+12;if(lx>W-tip.offsetWidth-4)lx=e.clientX-b.left-tip.offsetWidth-12;tip.style.left=lx+'px';tip.style.top=(e.clientY-b.top+12)+'px'};
@@ -422,38 +425,48 @@ function integ(){
 }
 
 // ---------- aba 4, seção 5: APLs × pontos das entrevistas ----------
-// RASCUNHO de correspondência setor do APL → arranjos das entrevistas (pela cadeia citada). Pedro revisa.
-const CORR={apicultura:[13,4,6],caprinovinocultura:[12,16,4],bovinocultura:[17],fruticultura:[1,4,6],agricultura:[3,4,8,14,18,21],textil:[14,15],avicultura:[],pesca:[],mineral:[],turismo:[],outros:[]};
-let aplSt={s:'apicultura',id:''};
+// RASCUNHO de correspondência setor do APL → pontos das entrevistas. p = cadeia principal do ponto; c = cadeia citada entre outras. Pedro revisa.
+const CORR={apicultura:{13:'p',4:'c',6:'c'},caprinovinocultura:{12:'p',16:'p',4:'c'},bovinocultura:{17:'p'},fruticultura:{1:'p',4:'c',6:'c'},agricultura:{3:'p',8:'p',14:'p',21:'p',4:'c',18:'c'},textil:{15:'p',14:'c'},avicultura:{},pesca:{},mineral:{},turismo:{},outros:{}};
+const RELT={p:'principal',c:'citada'};
+let aplSt={s:'apicultura',id:'',off:new Set()};
 function aplCmp(){const el=$('apl-cmp');if(!el||!APL.length)return;const cods=universe(),cs=new Set(cods);
  const inUF=APL.filter(a=>cs.has(a.c)),setores=APLG.map(([k,l,c])=>[k,l,c,new Set(inUF.filter(a=>a.s===k).map(a=>a.id)).size]);
  if(!setores.find(x=>x[0]===aplSt.s&&x[3]))aplSt.s=(setores.find(x=>x[3])||setores[0])[0];
- const S=setores.find(x=>x[0]===aplSt.s),apls=[...new Map(inUF.filter(a=>a.s===aplSt.s).map(a=>[a.id,a.n])).entries()].sort((a,b)=>a[1].localeCompare(b[1]));
- if(aplSt.id&&!apls.some(([i])=>String(i)===aplSt.id))aplSt.id='';
- const sel=inUF.filter(a=>a.s===aplSt.s&&(!aplSt.id||String(a.id)===aplSt.id)),mset=new Set(sel.map(a=>a.c));
- const ids=new Set(CORR[aplSt.s]||[]),locs=PTS.filter(p=>ids.has(p.id)&&cs.has(p.codmun)),orgs=[...new Set(locs.map(p=>p.id))];
- const dentro=orgs.filter(i=>locs.some(p=>p.id===i&&mset.has(p.codmun))),fora=orgs.filter(i=>!dentro.includes(i));
- const nomeSel=aplSt.id?apls.find(([i])=>String(i)===aplSt.id)[1]:'APLs de '+S[1].toLowerCase();
+ const S=setores.find(x=>x[0]===aplSt.s),apls=[...new Map(inUF.filter(a=>a.s===aplSt.s).map(a=>[String(a.id),a])).values()].sort((a,b)=>a.n.localeCompare(b.n));
+ if(aplSt.id&&!apls.some(a=>String(a.id)===aplSt.id))aplSt.id='';
+ const selA=apls.filter(a=>!aplSt.id||String(a.id)===aplSt.id),sel=inUF.filter(a=>a.s===aplSt.s&&(!aplSt.id||String(a.id)===aplSt.id)),mset=new Set(sel.map(a=>a.c));
+ const polos=new Map();for(const a of selA)if(a.cpc){const t=polos.get(a.cpc);polos.set(a.cpc,(t?t+'; ':'')+a.n)}
+ const semPolo=selA.filter(a=>!a.cpc).length;
+ const rel=CORR[aplSt.s]||{},ids=Object.keys(rel).map(Number).sort((a,b)=>(rel[a]===rel[b]?a-b:rel[a]==='p'?-1:1));
+ const on=ids.filter(i=>!aplSt.off.has(i)),locsOf=i=>PTS.filter(p=>p.id===i&&cs.has(p.codmun));
+ const rows=ids.map(i=>{const L=locsOf(i),d=L.filter(p=>mset.has(p.codmun)).length,p0=PTS.find(p=>p.id===i)||PTSALL.find(p=>p.id===i);return{i,r:rel[i],org:p0?p0.org:'#'+i,L,d,f:L.length-d}});
+ const ON=rows.filter(r=>!aplSt.off.has(r.i)),nl=ON.reduce((a,r)=>a+r.L.length,0),nd=ON.reduce((a,r)=>a+r.d,0),nf=nl-nd,npts=ON.filter(r=>r.L.length).length;
+ const nomeSel=aplSt.id?selA[0].n:'APLs de '+S[1].toLowerCase();
  if(!el.dataset.ok){el.dataset.ok=1;el.innerHTML=`<div class="aplq"><div class="box b2"><div class="bh"><span class="n">?</span>Pergunta</div><div class="fr"><label>Setor do APL <select data-as></select></label><label>APL específico <select data-ai></select></label></div><div data-am></div></div><div><div class="map" id="m-apl"></div><div class="leg" id="l-apl"></div></div></div>`;
-  el.addEventListener('change',e=>{if(e.target.dataset.as!=null){aplSt.s=e.target.value;aplSt.id=''}if(e.target.dataset.ai!=null)aplSt.id=e.target.value;aplCmp()});
+  el.addEventListener('change',e=>{if(e.target.dataset.as!=null){aplSt.s=e.target.value;aplSt.id='';aplSt.off=new Set()}if(e.target.dataset.ai!=null)aplSt.id=e.target.value;if(e.target.dataset.on!=null){const i=+e.target.dataset.on;e.target.checked?aplSt.off.delete(i):aplSt.off.add(i)}aplCmp()});
   new ResizeObserver(()=>{if($('m-apl').offsetParent)aplCmp()}).observe($('m-apl'))}
  el.querySelector('[data-as]').innerHTML=setores.map(([k,l,c,n])=>`<option value="${k}"${k===aplSt.s?' selected':''}${n?'':' disabled'}>${esc(l)} (${n} APL${n===1?'':'s'})</option>`).join('');
- el.querySelector('[data-ai]').innerHTML=opt('','Todos do setor ('+apls.length+')',!aplSt.id)+apls.map(([i,n])=>opt(i,n,String(i)===aplSt.id)).join('');
- const nm=i=>{const p=PTS.find(x=>x.id===i);return`#${i} ${esc(p.org)}`},li=(arr,ok)=>arr.map(i=>`<li class="${ok?'in':'out'}">${nm(i)} <em>${esc([...new Set(locs.filter(p=>p.id===i).map(p=>p.mun+'/'+p.uf))].join(', '))}</em></li>`).join('');
- el.querySelector('[data-am]').innerHTML=`<div class="amr"><div><span>${esc(nomeSel)}</span><b>${nf0.format(mset.size)}</b><em>municípios${UF?' em '+UF:''}</em></div><div><span>Pontos mapeados da cadeia</span><b>${orgs.length}</b><em>${locs.length} locais</em></div><div class="ok"><span>Dentro dos municípios do APL</span><b>${dentro.length}</b></div><div class="no"><span>Fora</span><b>${fora.length}</b></div></div>
-  <p class="ams">${orgs.length?`<b>${dentro.length} de ${orgs.length}</b> arranjos citados nas entrevistas ligados a ${esc(S[1].toLowerCase())} estão em município com ${aplSt.id?'esse APL':'APL do setor'}.`:'Nenhum arranjo das entrevistas ligado a este setor.'} ${mset.size?`${nf0.format(mset.size-new Set(locs.filter(p=>mset.has(p.codmun)).map(p=>p.codmun)).size)} dos ${nf0.format(mset.size)} municípios do APL não têm ponto mapeado.`:''}</p>
-  ${orgs.length?`<ul class="aml">${li(dentro,1)}${li(fora,0)}</ul>`:''}<p class="hint">Correspondência setor → arranjos é um <b>rascunho para revisão</b>: ${esc(S[1])} = ${[...ids].map(i=>'#'+i).join(', ')||'nenhum'}.</p>`;
+ el.querySelector('[data-ai]').innerHTML=opt('','Todos do setor ('+apls.length+')',!aplSt.id)+apls.map(a=>opt(a.id,a.n+(a.cp?' — polo: '+a.cp:''),String(a.id)===aplSt.id)).join('');
+ const muns=L=>[...new Set(L.map(p=>p.mun+'/'+p.uf))].join(', ');
+ const tab=ids.length?`<table class="apt"><thead><tr><th></th><th>Ponto das entrevistas</th><th class="r">Locais</th><th class="r">Dentro</th><th class="r">Fora</th></tr></thead><tbody>`+
+  rows.map(r=>`<tr class="${aplSt.off.has(r.i)?'off':''}"><td><input type="checkbox" data-on="${r.i}"${aplSt.off.has(r.i)?'':' checked'} aria-label="Mostrar #${r.i}"${r.L.length?'':' disabled'}></td><td><span class="nb ${r.r}">${r.i}</span>${esc(r.org)} <span class="rt ${r.r}">cadeia ${RELT[r.r]}</span><em>${r.L.length?esc(muns(r.L)):'sem local no mapa'}</em></td><td class="r">${r.L.length}</td><td class="r ok">${r.d}</td><td class="r no">${r.f}</td></tr>`).join('')+
+  `</tbody><tfoot><tr><td></td><td>Total marcados (${npts} ponto${npts===1?'':'s'})</td><td class="r">${nl}</td><td class="r ok">${nd}</td><td class="r no">${nf}</td></tr></tfoot></table>`:'';
+ const mComLocal=new Set(ON.flatMap(r=>r.L.filter(p=>mset.has(p.codmun)).map(p=>p.codmun))).size;
+ el.querySelector('[data-am]').innerHTML=`<div class="amr"><div><span>${esc(nomeSel)}</span><b>${nf0.format(mset.size)}</b><em>municípios${UF?' em '+UF:''} · ${polos.size} cidade${polos.size===1?'':'s'} polo ◆</em></div><div><span>Locais dos pontos das entrevistas</span><b>${nl}</b><em>de ${npts} ponto${npts===1?'':'s'} marcado${npts===1?'':'s'}</em></div><div class="ok"><span>Locais dentro dos municípios do APL</span><b>${nd}</b></div><div class="no"><span>Locais fora</span><b>${nf}</b></div></div>
+  <p class="ams">${nl?`<b>${nd} de ${nl}</b> locais dos pontos das entrevistas ligados a ${esc(S[1].toLowerCase())} ficam em município com ${aplSt.id?'esse APL':'APL do setor'}.`:'Nenhum local de ponto das entrevistas ligado a este setor.'} ${mset.size?`${nf0.format(mset.size-mComLocal)} dos ${nf0.format(mset.size)} municípios do APL não têm nenhum local.`:''}</p>
+  ${tab}<p class="hint">Cada linha é um ponto das entrevistas, e o número no círculo do mapa é o número do ponto. Um ponto pode ter vários locais (municípios onde atua). Dentro e fora contam locais. Cadeia <b>principal</b> = o ponto é dessa cadeia; <b>citada</b> = a cadeia aparece entre outras do ponto (círculo tracejado). Correspondência setor → pontos: <b>rascunho para revisão</b>.${semPolo?` ${semPolo} APL${semPolo===1?'':'s'} sem cidade polo no mapa (fora da base ou grafia não reconhecida).`:''}</p>`;
  const o={cods,inSet:new Set(cods),showOut:true,vals:new Map(cods.map(c=>[c,mset.has(c)?1:0])),breaks:[0.5],colors:['var(--blank)',S[2]],hatch:null,unit:'',title:nomeSel,
-  pts:p=>ids.has(p.id)?(mset.has(p.codmun)?{fill:'#1a7f3c',stroke:'#fff',w:1.5}:{fill:'#fff',stroke:'#d73027',w:2.5}):null};
+  marks:[...polos].map(([c,n])=>({c,t:`Cidade polo: ${(RM.get(c)||{}).municipio||c} · ${n}`})),
+  pts:p=>rel[p.id]&&!aplSt.off.has(p.id)?(mset.has(p.codmun)?{fill:'#1a7f3c',stroke:'#fff',w:1.5,lab:String(p.id),tc:'#fff',dash:rel[p.id]==='c'}:{fill:'#fff',stroke:'#d73027',w:2.5,lab:String(p.id),tc:'#d73027',dash:rel[p.id]==='c'}):null};
  drawMap($('m-apl'),o);
- $('l-apl').innerHTML=`<div><i style="background:${S[2]}"></i>município com ${aplSt.id?'o APL escolhido':'APL do setor'}</div><div><i style="background:var(--blank)"></i>sem</div><div><i style="background:#1a7f3c;border-radius:50%"></i>arranjo da cadeia dentro</div><div><i style="background:#fff;border:2.5px solid #d73027;border-radius:50%"></i>arranjo da cadeia fora</div>`}
+ $('l-apl').innerHTML=`<div><i style="background:${S[2]}"></i>município com ${aplSt.id?'o APL escolhido':'APL do setor'}</div><div><i style="background:var(--blank)"></i>sem</div><div><i style="background:#111;transform:rotate(45deg) scale(.8)"></i>cidade polo do APL</div><div><i style="background:#1a7f3c;border-radius:50%"></i>local dentro (número = ponto)</div><div><i style="background:#fff;border:2.5px solid #d73027;border-radius:50%"></i>local fora</div><div><i style="background:#fff;border:2px dashed #555;border-radius:50%"></i>cadeia citada (não principal)</div>`}
 
 // ---------- inicialização ----------
 let mbI,mbS,mbG;
 function renderAll(){ibge();sicor();BASEAGG||(BASEAGG=aggImoveis(null));geo();const vis=document.querySelector('.pane:not([hidden])').id;
  if(vis==='p-ibge')mbI.render();if(vis==='p-sicor')mbS.render();if(vis==='p-geo')mbG.render();if(vis==='p-int'){integ();aplCmp()}}
 fetch('apl.json').then(r=>r.ok?r.json():{rows:[]}).catch(()=>({rows:[]})).then(j=>{APL=j.rows||[];APLM=new Map();for(const a of APL){if(!APLM.has(a.c))APLM.set(a.c,[]);APLM.get(a.c).push(a)}if(R.length)renderAll()});
-fetch('arranjos_pontos.json').then(r=>r.ok?r.json():{pontos:[]}).catch(()=>({pontos:[]})).then(j=>{PTS=j.pontos||[];if(R.length)renderAll()});
+fetch('arranjos_pontos.json').then(r=>r.ok?r.json():{pontos:[]}).catch(()=>({pontos:[]})).then(j=>{PTS=j.pontos||[];PTSALL=j.todos||[];if(R.length)renderAll()});
 Promise.all(['data.json','geo.json','imoveis_simulados.json'].map(f=>fetch(f).then(r=>{if(!r.ok)throw new Error(f);return r.json()}))).then(([d,g,im])=>{
  R=d.rows.map(a=>Object.fromEntries(d.cols.map((c,i)=>[c,a[i]])));
  POLY=g;IM=im;

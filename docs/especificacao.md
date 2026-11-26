@@ -439,3 +439,24 @@ Pedidos de Pedro de 25/11, feitos primeiro no protótipo (`prototipo/`, artifact
 6. **Rótulo das variáveis binárias:** condição "≥ 1" ou "> 0" aparece como "<variável>: sim".
 
 O protótipo v13 não traz as mudanças de 25/11 que já estão no BI (tema, layout, zoom e linhas de UF).
+
+## 20. Em revisão: protótipo v14, APLs × pontos das entrevistas (issues #3 e #4, 26/11/2026)
+
+- **Vocabulário:** "pontos das entrevistas" (instituições levantadas nas entrevistas; cada um pode ter vários **locais**) e "APLs" (planilha do Observatório, agrupada em setores).
+- **Tabela fixa por ponto das entrevistas:** número, nome, marca "cadeia principal" ou "cadeia citada", municípios, locais no mapa, dentro e fora. Linha de total.
+- **Caixa por linha** liga e desliga o ponto no mapa e nas contas.
+- **Contagem dentro/fora por locais**, não por ponto.
+- **Mapa:** número do ponto dentro do círculo; verde = local dentro de município do APL; vermelho = fora; tracejado = cadeia citada.
+- **Cidade polo (#3):** losango preto no centroide do município polo de cada APL do setor ou do APL escolhido, com dica (cidade e APL).
+  - A cidade polo não passa a contar como município do APL.
+  - Polo fora da base ou com grafia não reconhecida é avisado no texto (hoje 119 de 142 APLs têm polo no mapa).
+- **Correspondência setor → pontos ganha a relação** (p = principal, c = citada). Rascunho para Pedro revisar:
+
+  | Setor | Cadeia principal | Cadeia citada |
+  |---|---|---|
+  | Apicultura | #13 | #4, #6 |
+  | Caprinovinocultura | #12, #16 | #4 |
+  | Bovinocultura | #17 | — |
+  | Fruticultura | #1 | #4, #6 |
+  | Agricultura | #3, #8, #14, #21 | #4, #18 |
+  | Têxtil | #15 | #14 |
