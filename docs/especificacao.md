@@ -440,7 +440,7 @@ Pedidos de Pedro de 25/11, feitos primeiro no protótipo (`prototipo/`, artifact
 
 O protótipo v13 não traz as mudanças de 25/11 que já estão no BI (tema, layout, zoom e linhas de UF).
 
-## 20. Em revisão: protótipo v14, APLs × pontos das entrevistas (issues #3 e #4, 26/11/2026)
+## 20. Protótipo v14, APLs × pontos das entrevistas (issues #3 e #4): aprovado por Pedro em 27/11/2026
 
 - **Vocabulário:** "pontos das entrevistas" (instituições levantadas nas entrevistas; cada um pode ter vários **locais**) e "APLs" (planilha do Observatório, agrupada em setores).
 - **Tabela fixa por ponto das entrevistas:** número, nome, marca "cadeia principal" ou "cadeia citada", municípios, locais no mapa, dentro e fora. Linha de total.
@@ -460,3 +460,24 @@ O protótipo v13 não traz as mudanças de 25/11 que já estão no BI (tema, lay
   | Fruticultura | #1 | #4, #6 |
   | Agricultura | #3, #8, #14, #21 | #4, #18 |
   | Têxtil | #15 | #14 |
+
+## 21. Em revisão: protótipo v15 (27/11/2026)
+
+Pedidos de Pedro sobre o v14 aprovado:
+
+1. **Correção (BI e protótipo):** o botão "Nº de imóveis | Área pot. degradada" da aba 4 não funcionava, porque o código ligava o clique ao primeiro grupo de botões da aba (o da pizza). Corrigido no BI em 27/11.
+2. **Correção (BI e protótipo):** o painel "Arranjos citados nas entrevistas" do mapa fixo da aba 4 passava da altura do mapa e ficava cortado. Agora ele limita a altura ao mapa. Corrigido no BI em 27/11.
+3. **Nova aba "5 · APLs"** (a seção "APLs × pontos das entrevistas" sai da aba 4).
+   - **Seleção como na tipologia:** cada setor (agrupamento) tem uma caixa que marca o setor inteiro, com indicação de parcial. Ao abrir o setor (▸) aparecem os APLs isolados, com nº de municípios e cidade polo.
+   - Busca por nome do APL, setor ou cidade polo.
+   - Os pontos das entrevistas da tabela vêm dos setores dos APLs marcados. Se o ponto é principal em algum setor, conta como principal.
+4. **Cores no mapa dos APLs**, escolhidas num botão:
+   - "Setor da planilha" (padrão): os subgrupos agregados no setor, isto é, o "Setor Produtivo" original da planilha;
+   - "APL": cada APL isolado;
+   - "Cor única".
+   - Até 10 cores; o excedente fica cinza como "outros". Município com mais de um subgrupo ou APL fica cinza-escuro. A dica do município lista os APLs e o setor original.
+5. **Recorte "Escolher municípios"** (construtores das abas 1–3 e aba 4): terceira opção ao lado de "Todos" e "Seleção por condições".
+   - Busca por nome e caixas de marcar (até 80 resultados por busca).
+   - "Marcar os visíveis", "Limpar escolha" e chips removíveis.
+   - Não se combina com as condições; é um modo alternativo.
+   - Entra na visão salva do feedback (`municipios_escolhidos`).

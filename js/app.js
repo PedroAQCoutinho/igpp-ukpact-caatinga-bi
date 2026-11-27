@@ -273,6 +273,7 @@ function drawMap(box, o) { // o:{cods, inSet, showOut, vals:Map, breaks, colors,
   }
   g += `</g><g class="zp">${pts}</g>`;
   box.innerHTML = `<svg role="img" viewBox="0 0 ${W} ${H}" aria-label="${esc(o.title || 'Mapa municipal')}"${o.blank ? ' class="blank"' : ''}>${g}</svg>${PTS.length && !o.pts ? ptsBtn() : ''}${ZOOM_UI}<div class="tip" hidden></div>`;
+  { const pp = box.querySelector('.ptspan'); if (pp) pp.style.maxHeight = Math.max(160, H - 56) + 'px' } // painel de pontos cabe no mapa (aba 4)
   let cx0 = 0, cy0 = 0, cx1 = W, cy1 = H; // área navegável: quadro inicial ∪ bioma inteiro
   for (const r of (BIOMA.length ? BIOMA : Object.values(POLY).flat())) for (const q of r) { const [px, py] = P(q).split(',').map(Number); if (px < cx0) cx0 = px; if (px > cx1) cx1 = px; if (py < cy0) cy0 = py; if (py > cy1) cy1 = py }
   zoomable(box, W, H, id, [cx0, cy0, cx1, cy1]);
@@ -676,7 +677,7 @@ async function main() {
   $('ctl-int').addEventListener('click', e => { if (e.target.dataset.clr == null) return; Object.assign(intSt, { m: 'q5', p: 'lr', fx: '' }); const c = $('ctl-int'); c.querySelector('[data-k=m]').value = 'q5'; c.querySelector('[data-k=p]').value = 'lr'; c.querySelector('[data-k=fx]').value = ''; c.querySelector('[data-fx]').hidden = true; integ() });
   $('cp-int').onclick = () => { const t = JSON.stringify(intSt.view, null, 1); $('vj-int').hidden = false; $('vj-int').textContent = t; navigator.clipboard?.writeText(t).catch(() => { }) };
   new ResizeObserver(() => { if ($('m1').offsetParent) integ() }).observe($('m1'));
-  document.querySelector('#p-int .seg').addEventListener('click', e => { const v = e.target.dataset.mv; if (!v) return; intSt.mv = v; document.querySelectorAll('#p-int .seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mv === v)); integ() });
+  $('p-int').querySelector('[data-mv]').closest('.seg').addEventListener('click', e => { const v = e.target.dataset.mv; if (!v) return; intSt.mv = v; $('p-int').querySelectorAll('[data-mv]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mv === v)); integ() });
   $('chips-int').addEventListener('click', e => { const i = e.target.dataset.rmf; if (i != null) intU.remove(+i) });
   const setBar = () => document.documentElement.style.setProperty('--barh', document.querySelector('.bar').offsetHeight + 'px'); setBar(); new ResizeObserver(setBar).observe(document.querySelector('.bar'));
   $('ag-ibge').onchange = () => { ibge(); mbI.render() }; $('ag-sicor').onchange = () => { sicor(); mbS.render() };

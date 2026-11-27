@@ -206,6 +206,13 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:var(--in
 .apt{table-layout:fixed;width:100%}.apt td,.apt th{white-space:normal;overflow-wrap:anywhere}.apt .r{white-space:nowrap}.apt th,.apt td{text-align:left}.apt td{border-bottom:1px solid var(--line);padding:5px 5px;vertical-align:top}.apt td:first-child,.apt th:first-child{width:26px;padding-right:0}.apt .rt{font-size:11px;padding:1px 6px;border-radius:9px;background:#555;color:#fff;white-space:nowrap}.apt .rt.c{background:transparent;color:var(--mut);border:1px dashed var(--mut)}.apt td em{display:block;font-style:normal;color:var(--mut);font-size:12px}.apt .r,.apt th.r{text-align:right;white-space:nowrap;width:52px}
 .apt td.ok{color:#1a7f3c;font-weight:700}.apt td.no{color:#d73027;font-weight:700}.apt tfoot td{font-weight:700;border-bottom:0}.apt tr.off td:not(:first-child){opacity:.4}
 .apt .nb{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:50%;background:#555;color:#fff;font-size:11.5px;font-weight:700;margin-right:4px}.apt .nb.c{background:#fff;color:#555;border:2px dashed #555}
+
+.mp{display:grid;gap:6px;margin-top:6px}.mp input[type=search],.box input[type=search][data-aq]{min-height:38px;padding:0 10px;border:1px solid var(--line);border-radius:6px;font-size:14px;width:100%;box-sizing:border-box}
+.mpl{max-height:220px;overflow:auto;display:grid;gap:1px;border:1px solid var(--line);border-radius:6px;padding:6px;background:var(--bg)}.mpl label{display:flex;gap:6px;align-items:center;font-size:14px;padding:2px}.mpl em{color:var(--mut);font-style:normal;font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.atree{display:grid;gap:4px;max-height:420px;overflow:auto;margin-top:8px;padding-right:4px}.atgh{display:flex;align-items:center;gap:4px}.atgh label{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}.atgh i{width:11px;height:11px;border-radius:3px;display:inline-block}.atgh em,.atgl em{color:var(--mut);font-style:normal;font-size:12px}
+.atx{border:0;background:none;cursor:pointer;font-size:14px;width:24px;height:28px;color:var(--ink)}.atgl{display:grid;gap:2px;margin:2px 0 6px 30px;padding-left:8px;border-left:2px solid var(--line)}.atgl label{display:flex;gap:6px;align-items:flex-start;font-size:13.5px;line-height:1.3;cursor:pointer}.atgl input{flex:none;margin-top:2px}
+.aplr{position:sticky;top:var(--barh,64px)}
 </style>
 </head>
 <body>
@@ -219,6 +226,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:var(--in
 <button role="tab" data-p="sicor" aria-selected="false">2 · SICOR</button>
 <button role="tab" data-p="geo" aria-selected="false">3 · Geo</button>
 <button role="tab" data-p="int" aria-selected="false">4 · Geo + socioeconomia</button>
+<button role="tab" data-p="apl" aria-selected="false">5 · APLs</button>
 </div>
 <label>UF <select id="uf"></select></label>
 </div>
@@ -265,6 +273,9 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:var(--in
 <div class="maps2"><div><h3 id="ar-t">Área por classe de aridez</h3><div class="rows" id="ar-geo"></div></div><div><h3 id="rf-t">Área por risco fundiário</h3><div class="rows" id="rf-geo"></div></div></div></section>
 </div>
 
+<div id="p-apl" class="pane" hidden>
+<section><h2>APLs × pontos das entrevistas</h2><p class="q">Escolha setores de APL inteiros ou APLs isolados e veja quantos locais dos pontos das entrevistas, da mesma cadeia, estão nos municípios desses APLs. APLs: Observatório Brasileiro de APLs (MDIC, outubro de 2022), agrupados por setor. O mapa usa a UF do topo.</p><div id="apl-cmp"></div></section>
+</div>
 <div id="p-int" class="pane" hidden>
 <p class="warn"><span class="sim">PARTE GEO SIMULADA</span> As variáveis socioeconômicas são reais.</p>
 <div class="intg">
@@ -282,7 +293,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:var(--in
 </aside>
 </div>
 <section><h2><span class="step">4</span>Área potencialmente degradada por tipologia na seleção</h2><div class="scroll"><table id="tip-int"></table></div><div class="fr" style="margin-top:10px"><button class="btn" id="cp-int">Copiar visão (JSON)</button></div><pre id="vj-int" hidden></pre></section>
-<section><h2><span class="step">5</span>Arranjos já existentes: APLs × pontos das entrevistas</h2><p class="q">Escolha um setor de APL (ou um APL específico) e veja quantos arranjos citados nas entrevistas, da mesma cadeia, estão nos municípios desse APL. APLs: Observatório Brasileiro de APLs (MDIC, outubro de 2022). O mapa usa a UF do topo e não muda com o recorte.</p><div id="apl-cmp"></div></section>
+
 </div>
 </main>
 <button class="fb-btn" id="fb-open" aria-haspopup="dialog">Feedback</button>

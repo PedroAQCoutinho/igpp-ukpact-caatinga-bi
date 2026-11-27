@@ -122,6 +122,19 @@ function ImovelFilters(el,onChange){
 }
 
 // ---------- filtros municipais ----------
+// Seletor de municípios por busca com caixas de marcar (recorte "Escolher municípios")
+function MunPicker(el,onChange){const picked=new Set();let qq='';
+ const lista=()=>{const n=norm(qq),cs=universe().map(c=>RM.get(c)).filter(Boolean).filter(r=>!n||norm(r.municipio+' '+r.uf).includes(n)).sort((a,b)=>a.municipio.localeCompare(b.municipio));
+  return cs.slice(0,80).map(r=>`<label><input type="checkbox" data-mc="${r.codmun}"${picked.has(r.codmun)?' checked':''}> ${esc(r.municipio)} <em>${r.uf}</em></label>`).join('')+(cs.length>80?`<p class="hint">Mostrando 80 de ${cs.length}. Refine a busca.</p>`:cs.length?'':'<p class="hint">Nenhum município com esse nome.</p>')};
+ const chips=()=>[...picked].map(c=>RM.get(c)).filter(Boolean).sort((a,b)=>a.municipio.localeCompare(b.municipio)).map(r=>`<span class="chip">${esc(r.municipio)}/${r.uf}<button data-mx="${r.codmun}" aria-label="Remover">×</button></span>`).join('');
+ const draw=()=>{el.innerHTML=`<div class="mp"><input type="search" data-mq placeholder="Buscar município: Petrolina, Juazeiro, Picos…" value="${esc(qq)}" aria-label="Buscar município"><div class="fr"><button class="btn" data-mall>Marcar os visíveis</button><button class="btn" data-mnone>Limpar escolha</button><span class="hint" data-mn>${picked.size} escolhido${picked.size===1?'':'s'}</span></div><div class="chips" data-mch>${chips()}</div><div class="mpl" data-ml>${lista()}</div></div>`};
+ const upd=()=>{el.querySelector('[data-mch]').innerHTML=chips();el.querySelector('[data-mn]').textContent=`${picked.size} escolhido${picked.size===1?'':'s'}`;onChange()};
+ el.addEventListener('input',e=>{if(e.target.dataset.mq==null)return;qq=e.target.value;el.querySelector('[data-ml]').innerHTML=lista()});
+ el.addEventListener('change',e=>{const c=e.target.dataset.mc;if(c==null)return;e.target.checked?picked.add(c):picked.delete(c);upd()});
+ el.addEventListener('click',e=>{const t=e.target;if(t.dataset.mx!=null){picked.delete(t.dataset.mx);el.querySelector('[data-ml]').innerHTML=lista();upd()}
+  if(t.dataset.mall!=null){el.querySelectorAll('[data-mc]').forEach(i=>picked.add(i.dataset.mc));el.querySelector('[data-ml]').innerHTML=lista();upd()}
+  if(t.dataset.mnone!=null){picked.clear();el.querySelector('[data-ml]').innerHTML=lista();upd()}});
+ draw();return{get:()=>picked,set(a){picked.clear();a.forEach(c=>picked.add(c));draw()},json:()=>[...picked]}}
 function FilterList(el,keys,onChange,title,single){
  let rows=[];
  const rowHTML=(f,i)=>{const v=V[f.v];return `<div class="fr" data-i="${i}"><select data-k="v">${varOptions(keys,f.v)}</select>${v.ag?`<select data-k="ag" aria-label="Agrupamento">${agOptions(f.ag,v.ag)}</select>`:''}<select data-k="op">${Object.entries(OPS).map(([k,l])=>opt(k,l,k===f.op)).join('')}</select><input type="number" data-k="x" value="${f.x??''}" step="any"><span class="u">${esc(v.u)}</span>${single?'':`<button class="x" data-rm="${i}" aria-label="Remover condição">×</button>`}<span class="imp" data-imp></span></div>`};
@@ -189,9 +202,10 @@ function drawMap(box,o){ // o:{cods, inSet, showOut, vals:Map, breaks, colors, h
   for(const ids of Object.values(grp))ids.forEach((i,k)=>{const p=PTS[i],[x,y]=P([p.lon,p.lat]).split(',').map(Number),n=ids.length,off=ptsSty(p).lab?10.5:7,dx=n>1?off*Math.cos(2*Math.PI*k/n):0,dy=n>1?off*Math.sin(2*Math.PI*k/n):0,col=PCL[p.classe],oco=p.prec==='regiao_aprox';
    const cx_=(x+dx).toFixed(1),cy_=(y+dy).toFixed(1),st_=ptsSty(p),r_=st_.lab?9:6;g+=`<circle cx="${cx_}" cy="${cy_}" r="${r_+2.5}" fill="#fff" pointer-events="none"/><circle data-pt="${i}" cx="${cx_}" cy="${cy_}" r="${r_}" style="fill:${st_.fill};stroke:${st_.stroke};stroke-width:${st_.w};${st_.dash?'stroke-dasharray:3 2;':''}cursor:pointer"/>`+(st_.lab?`<text x="${cx_}" y="${cy_}" dy=".35em" text-anchor="middle" style="font:700 9.5px system-ui,sans-serif;fill:${st_.tc||'#fff'};pointer-events:none">${esc(st_.lab)}</text>`:'')})}
  box.innerHTML=`<svg role="img" aria-label="${esc(o.title||'Mapa municipal')}"${o.blank?' class="blank"':''}>${g}</svg>${PTS.length&&!o.pts?ptsBtn():''}<div class="tip" hidden></div>`;
+ {const pp=box.querySelector('.ptspan');if(pp)pp.style.maxHeight=Math.max(160,H-56)+'px'}
  const tip=box.querySelector('.tip');
  box.querySelector('svg').onmousemove=e=>{if(e.target.dataset?.mk!=null){const b=box.getBoundingClientRect();tip.textContent=e.target.dataset.mk;tip.hidden=false;tip.style.left=(e.clientX-b.left+12)+'px';tip.style.top=(e.clientY-b.top+12)+'px';return}const pi=e.target.dataset?.pt;if(pi!=null){const p=PTS[+pi],b=box.getBoundingClientRect();tip.textContent=`${p.org} · classe ${p.classe} · ${p.cadeia} · ${p.local} (${PRL[p.prec]}${p.prec!=='municipio'?': '+p.mun+'/'+p.uf:''})`;tip.hidden=false;let lx=e.clientX-b.left+12;if(lx>W-tip.offsetWidth-4)lx=Math.max(4,e.clientX-b.left-tip.offsetWidth-12);tip.style.left=lx+'px';tip.style.top=(e.clientY-b.top+12)+'px';return}
-  const c=e.target.dataset?.c;if(!c){tip.hidden=true;return}const r=RM.get(c),x=o.vals.get(c),b=box.getBoundingClientRect();
+  const c=e.target.dataset?.c;if(!c){tip.hidden=true;return}const r=RM.get(c),x=o.vals.get(c),b=box.getBoundingClientRect();if(o.tipf){tip.textContent=o.tipf(c,r);tip.hidden=false;let lx=e.clientX-b.left+12;if(lx>W-tip.offsetWidth-4)lx=e.clientX-b.left-tip.offsetWidth-12;tip.style.left=lx+'px';tip.style.top=(e.clientY-b.top+12)+'px';return}
   tip.textContent=`${r.municipio} (${r.uf})${o.blank?(o.inSet.has(c)?'':' · fora do recorte'):': '+(o.inSet.has(c)?(x==null?'sem dado':fmt(x)+' '+o.unit):'fora do recorte')}${o.hatch&&o.hatch.has(c)?' · hachura':''}`;tip.hidden=false;
   let lx=e.clientX-b.left+12;if(lx>W-tip.offsetWidth-4)lx=e.clientX-b.left-tip.offsetWidth-12;tip.style.left=lx+'px';tip.style.top=(e.clientY-b.top+12)+'px'};
  box.querySelector('svg').onmouseleave=()=>tip.hidden=true;
@@ -225,8 +239,8 @@ function MapBuilder(el,{keys,filterKeys,agSel,geoAgg}){
  const id=++MBID,st={rc:null,v:'',norm:'abs',m:'q5',fx:'',p:'lr',only:true,h:false};
  el.innerHTML=`<div class="mb"><div class="ctl">
  <div class="box b1"><div class="bh"><span class="n">1</span>Recorte de municípios<button class="clr" data-clr="1">Limpar</button></div>
-  <div class="chk"><label><input type="radio" name="rc${id}" value="todos"> Todos</label><label><input type="radio" name="rc${id}" value="sel"> Seleção personalizada</label></div>
-  <div data-f hidden></div></div>
+  <div class="chk"><label><input type="radio" name="rc${id}" value="todos"> Todos</label><label><input type="radio" name="rc${id}" value="sel"> Seleção por condições</label><label><input type="radio" name="rc${id}" value="mun"> Escolher municípios</label></div>
+  <div data-f hidden></div><div data-mp hidden></div></div>
  <div class="box b2 off" data-b="2"><div class="bh"><span class="n">2</span>Variável e unidade<button class="clr" data-clr="2">Limpar</button></div>
   <p class="hint" data-hint>Escolha o recorte primeiro.</p>
   <div data-c hidden class="ctl"><label>Variável <select data-k="v"><option value="">Escolha uma variável…</option>${varOptions(keys,'')}</select></label>
@@ -239,15 +253,15 @@ function MapBuilder(el,{keys,filterKeys,agSel,geoAgg}){
  <div class="fr"><button class="clr" data-clr="all" style="--bc:var(--ink)">Limpar tudo</button><button class="btn" data-cp>Copiar visão (JSON)</button><button class="btn" data-csv>Copiar tabela (CSV)</button></div><pre data-j hidden></pre></div>
  <div><div class="map" data-map></div><div class="leg" data-leg></div><div data-hm></div><h3 data-th></h3><div class="scroll tall"><table data-t></table></div></div></div>`;
  const q=s=>el.querySelector(s),render=()=>api.render();
- const fl=FilterList(q('[data-f]'),filterKeys,render,'Municípios que atendem a todas as condições:');
+ const fl=FilterList(q('[data-f]'),filterKeys,render,'Municípios que atendem a todas as condições:'),mp=MunPicker(q('[data-mp]'),render);
  const hl=FilterList(q('[data-h]'),filterKeys,render,'Municípios com esta característica recebem hachura:',true);hl.set([{v:'pronafb',ag:'',op:'>',x:30}]);hl.on=false;
  const box=n=>q(`[data-b="${n}"]`);
  const steps=()=>{const open2=!!st.rc,open3=open2&&!!st.v;
   for(const[n,o]of[[2,open2],[3,open3],[4,open3]]){const b=box(n);b.classList.toggle('off',!o);const c=b.querySelector('[data-c]'),h=b.querySelector('[data-hint]');if(c)c.hidden=!o;if(h)h.hidden=o}
   q('[data-addh]').disabled=!open3;q('[data-addh]').hidden=st.h;q('[data-h]').hidden=!st.h;q('[data-clr="4"]').hidden=!st.h;
-  q('[data-f]').hidden=st.rc!=='sel';q('[data-k=norm]').disabled=!st.v||!V[st.v].ext;q('[data-fx]').hidden=st.m!=='fx'};
+  q('[data-f]').hidden=st.rc!=='sel';q('[data-mp]').hidden=st.rc!=='mun';q('[data-k=norm]').disabled=!st.v||!V[st.v].ext;q('[data-fx]').hidden=st.m!=='fx'};
  const resetLeg=()=>{st.m='q5';st.fx='';st.p='lr';st.only=true;q('[data-k=m]').value='q5';q('[data-k=fx]').value='';q('[data-k=p]').value='lr';q('[data-k=only]').checked=true};
- const clear=n=>{if(n==='1'||n==='all'){st.rc=null;el.querySelectorAll(`[name=rc${id}]`).forEach(x=>x.checked=false);fl.set([])}
+ const clear=n=>{if(n==='1'||n==='all'){st.rc=null;el.querySelectorAll(`[name=rc${id}]`).forEach(x=>x.checked=false);fl.set([]);mp.set([])}
   if(n==='2'||n==='all'){st.v='';st.norm='abs';q('[data-k=v]').value='';q('[data-k=norm]').value='abs'}
   if(n==='3'||n==='all')resetLeg();
   if(n==='4'||n==='all'){st.h=false;hl.on=false}steps();render()};
@@ -258,9 +272,9 @@ function MapBuilder(el,{keys,filterKeys,agSel,geoAgg}){
  q('[data-k=fx]').addEventListener('input',e=>{st.fx=e.target.value;render()});
  let last=[];
  const api={render(){
-  const cods=universe(),fs=st.rc==='sel'?fl.get():[],inSet=new Set(st.rc?cods.filter(c=>passes(c,fs)):cods);
+  const cods=universe(),fs=st.rc==='sel'?fl.get():[],inSet=new Set(st.rc==='mun'?cods.filter(c=>mp.get().has(c)):st.rc?cods.filter(c=>passes(c,fs)):cods);
   if(!st.v){const o={cods,inSet,showOut:true,blank:true,vals:new Map(),title:st.rc?'Recorte de municípios':'Mapa em branco — comece pelo recorte'};drawMap(q('[data-map]'),o);q('[data-leg]').innerHTML=legendHTML(o);q('[data-hm]').innerHTML='';
-   q('[data-th]').textContent=st.rc?`${inSet.size} municípios no recorte${fs.length?': '+flabel(fs):''}`:'';q('[data-t]').innerHTML='';last=[];api.view={recorte:st.rc,filtros_municipio:fl.json()};return}
+   q('[data-th]').textContent=st.rc?`${inSet.size} municípios no recorte${st.rc==='mun'?' (escolhidos)':fs.length?': '+flabel(fs):''}`:'';q('[data-t]').innerHTML='';last=[];api.view={recorte:st.rc,filtros_municipio:fl.json(),municipios_escolhidos:st.rc==='mun'?mp.json():[]};return}
   const v=V[st.v],ag=v.ag?agSel():'',g=v.geo?geoAgg():null;
   let unit=v.u;const vals=new Map();
   for(const c of cods){let x=val(c,st.v,ag,g?g.by:null);
@@ -275,7 +289,7 @@ function MapBuilder(el,{keys,filterKeys,agSel,geoAgg}){
   last=cods.filter(c=>inSet.has(c)).map(c=>[c,vals.get(c)]).sort((a,b)=>(b[1]??-1e18)-(a[1]??-1e18));
   q('[data-th]').textContent=`${inSet.size} municípios no recorte${fs.length?': '+flabel(fs):''} — do maior para o menor`;
   q('[data-t]').innerHTML=`<thead><tr><th>Município</th><th>UF</th><th>${esc(title)} (${esc(unit)})</th>${hatch?'<th>Hachura</th>':''}</tr></thead><tbody>`+last.slice(0,200).map(([c,x])=>{const r=RM.get(c);return`<tr><td>${esc(r.municipio)}</td><td>${r.uf}</td><td>${fmt(x)}</td>${hatch?`<td>${hatch.has(c)?'sim':''}</td>`:''}</tr>`}).join('')+'</tbody>';
-  api.view={recorte:st.rc,filtros_municipio:fl.json(),variavel:st.v,agrupamento:ag||null,normalizacao:st.norm,legenda:st.m,limites_fixos:st.m==='fx'?st.fx:null,paleta:st.p,classes_so_recorte:st.only,uf:UF||null,hachura:hl.json(),limites_calculados:breaks};
+  api.view={recorte:st.rc,filtros_municipio:fl.json(),municipios_escolhidos:st.rc==='mun'?mp.json():[],variavel:st.v,agrupamento:ag||null,normalizacao:st.norm,legenda:st.m,limites_fixos:st.m==='fx'?st.fx:null,paleta:st.p,classes_so_recorte:st.only,uf:UF||null,hachura:hl.json(),limites_calculados:breaks};
  },view:null};
  q('[data-cp]').onclick=()=>{const t=JSON.stringify(api.view,null,1);q('[data-j]').hidden=false;q('[data-j]').textContent=t;navigator.clipboard?.writeText(t).catch(()=>{})};
  q('[data-csv]').onclick=()=>{const t='codmun;municipio;uf;valor\n'+last.map(([c,x])=>{const r=RM.get(c);return`${c};${r.municipio};${r.uf};${x==null?'':String(x).replace('.',',')}`}).join('\n');q('[data-j]').hidden=false;q('[data-j]').textContent=t;navigator.clipboard?.writeText(t).catch(()=>{})};
@@ -381,7 +395,7 @@ function usoBlock(st){ // quadro de uso da terra
   return `<div class="row"><span>${l}</span><div class="track">${USOS.map(([k,lb,col],j)=>`<i title="${lb}: ${pc(u[j],t)}" style="width:${100*u[j]/t}%;background:${col}"></i>`).join('')}</div><span class="v">${pc(u[1],t)} pastagem</span></div>`}).join('');
 }
 // ---------- aba 4 ----------
-let intU,intF,intH,intSt={m:'q5',p:'lr',fx:'',mv:'n',h:false};
+let intU,intMP,intF,intH,intSt={m:'q5',p:'lr',fx:'',mv:'n',h:false};
 const TIPGC={af:'#2f7d4a',hib:'#c4761a',eco:'#2b5f93'};
 function compBars(t){ // barras de composição por tipologia, com os três agrupamentos
  const row=(k,lab,u)=>{const T=t.reduce((a,x)=>a+x[k],0);if(!T)return`<div class="cb"><div class="cbl">${lab}</div><p class="hint">Sem imóveis na seleção.</p></div>`;
@@ -394,7 +408,7 @@ function compBars(t){ // barras de composição por tipologia, com os três agru
 function ptsDic(){if(!PTS_SEL.size)return'';const U=ptsU().filter(p=>PTS_SEL.has(p.id));
  return `<div class="pdic"><b>Pontos das entrevistas</b>${['A','B','C','D'].map(c=>{const n=U.filter(p=>p.classe===c).length;return`<div${n?'':' class="z"'}><i style="background:${PCL[c]}"></i><b>${c}</b><span>${PCD[c]}</span><em>${n}</em></div>`}).join('')}<div class="pdicn">○ contorno vazio = região aproximada</div></div>`}
 function integ(){
- const cods=universe(),fs=intSt.rc==='sel'?intU.get():[],uni=new Set(cods.filter(c=>passes(c,fs))),fi=intF.get();
+ const cods=universe(),fs=intSt.rc==='sel'?intU.get():[],uni=new Set(intSt.rc==='mun'?cods.filter(c=>intMP.get().has(c)):cods.filter(c=>passes(c,fs))),fi=intF.get();
  const all={tip:new Set(IM.tip.keys()),ar:new Set([0,1,2,3,4,5]),rf:new Set([0,1,2,3,4]),uso:fi.uso,degmin:null,apt:'t'};
  const a0=aggImoveis(all,new Set(cods)),a1=aggImoveis(all,uni),agg=aggImoveis(fi,uni);
  const sum=a=>{let n=0,area=0,deg=0,m=0;for(const o of a.by.values()){n+=o.n;area+=o.area;deg+=o.deg;if(o.n>0)m++}return{n,area,deg,m}};
@@ -407,7 +421,7 @@ function integ(){
  intU.impact(f=>{const k=cods.filter(c=>!passes(c,[f])).length;return `elimina ${nf0.format(k)}`});
  // etiquetas das condições ativas
  const ff=intF.get(),ch=[];
- if(intSt.rc==='sel')intU.rows().forEach((f,i)=>{if(f.x!=null&&f.x!==''&&isFinite(f.x))ch.push(`<span class="chip">${esc(flabel([f]))}<button data-rmf="${i}" aria-label="Remover">×</button></span>`)});
+ if(intSt.rc==='mun')ch.push(`<span class="chip">${intMP.get().size} municípios escolhidos</span>`);if(intSt.rc==='sel')intU.rows().forEach((f,i)=>{if(f.x!=null&&f.x!==''&&isFinite(f.x))ch.push(`<span class="chip">${esc(flabel([f]))}<button data-rmf="${i}" aria-label="Remover">×</button></span>`)});
  const off=(set,n,labs,name)=>set.size<n?`<span class="chip" style="--bc:#c4761a">${name}: ${[...set].sort().map(i=>labs[i]).join(', ')||'nenhum'}</span>`:'';
  ch.push(off(ff.tip,8,IM.tip,'Tipologias'),off(ff.ar,6,IM.ar,'Aridez'),off(ff.rf,5,RFL.map(r=>r[0]),'Risco'));
  ff.up.forEach((x,i)=>{if(x)ch.push(`<span class="chip" style="--bc:#c4761a">${USOS[i][1]} ${x.op==='>='?'≥':'≤'} ${fmt(x.x)}% do imóvel</span>`)});
@@ -421,50 +435,74 @@ function integ(){
  const o={cods,inSet:uni,showOut:false,noPtsLeg:true,vals,breaks:b,colors:ramp(intSt.p,b.length+1),hatch,hatchLabel:flabel(hs),unit,title};
  drawMap($('m1'),o);$('l1').innerHTML=legendHTML(o);$('pdic-int').innerHTML=ptsDic();$('hm-int').innerHTML=hatchMetric(cods,uni,hatch,flabel(hs));
  tipTable($('tip-int'),agg.tip,agg.uso);
- intSt.view={uf:UF||null,universo_municipios:intU.json(),filtros_imovel:intF.json(),hachura:intSt.h?intH.json():[],mapa:intSt.mv,legenda:intSt.m,limites_fixos:intSt.m==='fx'?intSt.fx:null,paleta:intSt.p};
+ intSt.view={uf:UF||null,universo_municipios:intSt.rc==='mun'?[]:intU.json(),municipios_escolhidos:intSt.rc==='mun'?intMP.json():[],filtros_imovel:intF.json(),hachura:intSt.h?intH.json():[],mapa:intSt.mv,legenda:intSt.m,limites_fixos:intSt.m==='fx'?intSt.fx:null,paleta:intSt.p};
 }
 
 // ---------- aba 4, seção 5: APLs × pontos das entrevistas ----------
 // RASCUNHO de correspondência setor do APL → pontos das entrevistas. p = cadeia principal do ponto; c = cadeia citada entre outras. Pedro revisa.
 const CORR={apicultura:{13:'p',4:'c',6:'c'},caprinovinocultura:{12:'p',16:'p',4:'c'},bovinocultura:{17:'p'},fruticultura:{1:'p',4:'c',6:'c'},agricultura:{3:'p',8:'p',14:'p',21:'p',4:'c',18:'c'},textil:{15:'p',14:'c'},avicultura:{},pesca:{},mineral:{},turismo:{},outros:{}};
 const RELT={p:'principal',c:'citada'};
-let aplSt={s:'apicultura',id:'',off:new Set()};
+let aplSt={sel:null,open:new Set(),q:'',off:new Set(),cor:'so'};
+const CATP=['#1b9e77','#d95f02','#7570b3','#e7298a','#66a61e','#e6ab02','#a6761d','#1f78b4','#b2df8a','#fb9a99'];
+function aplTree(inUF){ // seleção como na tipologia: setor (agrupamento) com os APLs isolados dentro, com busca
+ const n=norm(aplSt.q),by=new Map();for(const a of inUF){if(!by.has(a.id))by.set(a.id,{id:a.id,n:a.n,s:a.s,cp:a.cp,m:0});by.get(a.id).m++}
+ return APLG.map(([k,l,c])=>{const it=[...by.values()].filter(a=>a.s===k).sort((a,b)=>a.n.localeCompare(b.n));if(!it.length)return'';
+  const vis=it.filter(a=>!n||norm(a.n+' '+(a.cp||'')+' '+l).includes(n));if(n&&!vis.length)return'';
+  const ns=it.filter(a=>aplSt.sel.has(a.id)).length,op=aplSt.open.has(k)||!!n;
+  return `<div class="atg"><div class="atgh"><button class="atx" data-ag="${k}" aria-expanded="${op}" aria-label="Abrir ${esc(l)}">${op?'▾':'▸'}</button><label><input type="checkbox" data-as="${k}"${ns===it.length?' checked':''}${ns&&ns<it.length?' data-ind':''}> <i style="background:${c}"></i><b>${esc(l)}</b> <em>${ns?ns+' de ':''}${it.length} APL${it.length===1?'':'s'}</em></label></div>`+
+   (op?`<div class="atgl">${vis.map(a=>`<label><input type="checkbox" data-ai="${a.id}"${aplSt.sel.has(a.id)?' checked':''}> ${esc(a.n)} <em>${a.m} mun.${a.cp?' · polo: '+esc(a.cp):''}</em></label>`).join('')}</div>`:'')+'</div>'}).join('')||'<p class="hint">Nenhum APL com esse nome.</p>'}
 function aplCmp(){const el=$('apl-cmp');if(!el||!APL.length)return;const cods=universe(),cs=new Set(cods);
- const inUF=APL.filter(a=>cs.has(a.c)),setores=APLG.map(([k,l,c])=>[k,l,c,new Set(inUF.filter(a=>a.s===k).map(a=>a.id)).size]);
- if(!setores.find(x=>x[0]===aplSt.s&&x[3]))aplSt.s=(setores.find(x=>x[3])||setores[0])[0];
- const S=setores.find(x=>x[0]===aplSt.s),apls=[...new Map(inUF.filter(a=>a.s===aplSt.s).map(a=>[String(a.id),a])).values()].sort((a,b)=>a.n.localeCompare(b.n));
- if(aplSt.id&&!apls.some(a=>String(a.id)===aplSt.id))aplSt.id='';
- const selA=apls.filter(a=>!aplSt.id||String(a.id)===aplSt.id),sel=inUF.filter(a=>a.s===aplSt.s&&(!aplSt.id||String(a.id)===aplSt.id)),mset=new Set(sel.map(a=>a.c));
+ const inUF=APL.filter(a=>cs.has(a.c));
+ if(!aplSt.sel){aplSt.sel=new Set(inUF.filter(a=>a.s==='apicultura').map(a=>a.id));aplSt.open.add('apicultura')}
+ const selA=[...new Map(inUF.filter(a=>aplSt.sel.has(a.id)).map(a=>[a.id,a])).values()],mset=new Set(inUF.filter(a=>aplSt.sel.has(a.id)).map(a=>a.c));
+ const setSel=[...new Set(selA.map(a=>a.s))],SG=APLG.filter(g=>setSel.includes(g[0]));
  const polos=new Map();for(const a of selA)if(a.cpc){const t=polos.get(a.cpc);polos.set(a.cpc,(t?t+'; ':'')+a.n)}
  const semPolo=selA.filter(a=>!a.cpc).length;
- const rel=CORR[aplSt.s]||{},ids=Object.keys(rel).map(Number).sort((a,b)=>(rel[a]===rel[b]?a-b:rel[a]==='p'?-1:1));
- const on=ids.filter(i=>!aplSt.off.has(i)),locsOf=i=>PTS.filter(p=>p.id===i&&cs.has(p.codmun));
+ const rel={};for(const g of setSel)for(const[i,r]of Object.entries(CORR[g]||{}))if(rel[i]!=='p')rel[i]=r;
+ const ids=Object.keys(rel).map(Number).sort((a,b)=>(rel[a]===rel[b]?a-b:rel[a]==='p'?-1:1));
+ const locsOf=i=>PTS.filter(p=>p.id===i&&cs.has(p.codmun));
  const rows=ids.map(i=>{const L=locsOf(i),d=L.filter(p=>mset.has(p.codmun)).length,p0=PTS.find(p=>p.id===i)||PTSALL.find(p=>p.id===i);return{i,r:rel[i],org:p0?p0.org:'#'+i,L,d,f:L.length-d}});
  const ON=rows.filter(r=>!aplSt.off.has(r.i)),nl=ON.reduce((a,r)=>a+r.L.length,0),nd=ON.reduce((a,r)=>a+r.d,0),nf=nl-nd,npts=ON.filter(r=>r.L.length).length;
- const nomeSel=aplSt.id?selA[0].n:'APLs de '+S[1].toLowerCase();
- if(!el.dataset.ok){el.dataset.ok=1;el.innerHTML=`<div class="aplq"><div class="box b2"><div class="bh"><span class="n">?</span>Pergunta</div><div class="fr"><label>Setor do APL <select data-as></select></label><label>APL específico <select data-ai></select></label></div><div data-am></div></div><div><div class="map" id="m-apl"></div><div class="leg" id="l-apl"></div></div></div>`;
-  el.addEventListener('change',e=>{if(e.target.dataset.as!=null){aplSt.s=e.target.value;aplSt.id='';aplSt.off=new Set()}if(e.target.dataset.ai!=null)aplSt.id=e.target.value;if(e.target.dataset.on!=null){const i=+e.target.dataset.on;e.target.checked?aplSt.off.delete(i):aplSt.off.add(i)}aplCmp()});
+ const allOf=k=>new Set(inUF.filter(a=>a.s===k).map(a=>a.id)),full=SG.length===1&&[...allOf(SG[0][0])].every(i=>aplSt.sel.has(i))&&selA.length===allOf(SG[0][0]).size;
+ const nomeSel=!selA.length?'Nenhum APL escolhido':full?'APLs de '+SG[0][1].toLowerCase():selA.length===1?selA[0].n:`${selA.length} APLs escolhidos`;
+ const corS=SG.length===1?SG[0][2]:'#7a5a8c';
+ if(!el.dataset.ok){el.dataset.ok=1;el.innerHTML=`<div class="aplq"><div><div class="box b2"><div class="bh"><span class="n">1</span>APLs<button class="clr" data-aclr>Limpar</button></div><p class="hint">Marque um setor inteiro (agrupamento) ou abra o setor ▸ e marque APLs isolados, como na tipologia.</p><input type="search" data-aq placeholder="Buscar APL, setor ou cidade polo: mel, Seridó, Picos…" aria-label="Buscar APL"><div class="atree" data-at></div></div><div data-am></div></div><div class="aplr"><div class="map" id="m-apl"></div><div class="leg" id="l-apl"></div></div></div>`;
+  el.addEventListener('input',e=>{if(e.target.dataset.aq==null)return;aplSt.q=e.target.value;aplCmp()});
+  el.addEventListener('click',e=>{const t=e.target;if(t.dataset.acor!=null){aplSt.cor=t.dataset.acor;aplCmp();return}if(t.dataset.ag!=null){const k=t.dataset.ag;aplSt.open.has(k)?aplSt.open.delete(k):aplSt.open.add(k);aplCmp()}if(t.dataset.aclr!=null){aplSt.sel=new Set();aplCmp()}});
+  el.addEventListener('change',e=>{const t=e.target;const ins=APL.filter(a=>universe().includes(a.c));
+   if(t.dataset.as!=null){const ids_=new Set(ins.filter(a=>a.s===t.dataset.as).map(a=>a.id));ids_.forEach(i=>t.checked?aplSt.sel.add(i):aplSt.sel.delete(i))}
+   if(t.dataset.ai!=null){const i=+t.dataset.ai;t.checked?aplSt.sel.add(i):aplSt.sel.delete(i)}
+   if(t.dataset.on!=null){const i=+t.dataset.on;t.checked?aplSt.off.delete(i):aplSt.off.add(i)}aplCmp()});
   new ResizeObserver(()=>{if($('m-apl').offsetParent)aplCmp()}).observe($('m-apl'))}
- el.querySelector('[data-as]').innerHTML=setores.map(([k,l,c,n])=>`<option value="${k}"${k===aplSt.s?' selected':''}${n?'':' disabled'}>${esc(l)} (${n} APL${n===1?'':'s'})</option>`).join('');
- el.querySelector('[data-ai]').innerHTML=opt('','Todos do setor ('+apls.length+')',!aplSt.id)+apls.map(a=>opt(a.id,a.n+(a.cp?' — polo: '+a.cp:''),String(a.id)===aplSt.id)).join('');
+ const at=el.querySelector('[data-at]'),sy=at.scrollTop;at.innerHTML=aplTree(inUF);at.scrollTop=sy;at.querySelectorAll('[data-ind]').forEach(i=>i.indeterminate=true);
  const muns=L=>[...new Set(L.map(p=>p.mun+'/'+p.uf))].join(', ');
  const tab=ids.length?`<table class="apt"><thead><tr><th></th><th>Ponto das entrevistas</th><th class="r">Locais</th><th class="r">Dentro</th><th class="r">Fora</th></tr></thead><tbody>`+
   rows.map(r=>`<tr class="${aplSt.off.has(r.i)?'off':''}"><td><input type="checkbox" data-on="${r.i}"${aplSt.off.has(r.i)?'':' checked'} aria-label="Mostrar #${r.i}"${r.L.length?'':' disabled'}></td><td><span class="nb ${r.r}">${r.i}</span>${esc(r.org)} <span class="rt ${r.r}">cadeia ${RELT[r.r]}</span><em>${r.L.length?esc(muns(r.L)):'sem local no mapa'}</em></td><td class="r">${r.L.length}</td><td class="r ok">${r.d}</td><td class="r no">${r.f}</td></tr>`).join('')+
   `</tbody><tfoot><tr><td></td><td>Total marcados (${npts} ponto${npts===1?'':'s'})</td><td class="r">${nl}</td><td class="r ok">${nd}</td><td class="r no">${nf}</td></tr></tfoot></table>`:'';
  const mComLocal=new Set(ON.flatMap(r=>r.L.filter(p=>mset.has(p.codmun)).map(p=>p.codmun))).size;
- el.querySelector('[data-am]').innerHTML=`<div class="amr"><div><span>${esc(nomeSel)}</span><b>${nf0.format(mset.size)}</b><em>municípios${UF?' em '+UF:''} · ${polos.size} cidade${polos.size===1?'':'s'} polo ◆</em></div><div><span>Locais dos pontos das entrevistas</span><b>${nl}</b><em>de ${npts} ponto${npts===1?'':'s'} marcado${npts===1?'':'s'}</em></div><div class="ok"><span>Locais dentro dos municípios do APL</span><b>${nd}</b></div><div class="no"><span>Locais fora</span><b>${nf}</b></div></div>
-  <p class="ams">${nl?`<b>${nd} de ${nl}</b> locais dos pontos das entrevistas ligados a ${esc(S[1].toLowerCase())} ficam em município com ${aplSt.id?'esse APL':'APL do setor'}.`:'Nenhum local de ponto das entrevistas ligado a este setor.'} ${mset.size?`${nf0.format(mset.size-mComLocal)} dos ${nf0.format(mset.size)} municípios do APL não têm nenhum local.`:''}</p>
-  ${tab}<p class="hint">Cada linha é um ponto das entrevistas, e o número no círculo do mapa é o número do ponto. Um ponto pode ter vários locais (municípios onde atua). Dentro e fora contam locais. Cadeia <b>principal</b> = o ponto é dessa cadeia; <b>citada</b> = a cadeia aparece entre outras do ponto (círculo tracejado). Correspondência setor → pontos: <b>rascunho para revisão</b>.${semPolo?` ${semPolo} APL${semPolo===1?'':'s'} sem cidade polo no mapa (fora da base ou grafia não reconhecida).`:''}</p>`;
- const o={cods,inSet:new Set(cods),showOut:true,vals:new Map(cods.map(c=>[c,mset.has(c)?1:0])),breaks:[0.5],colors:['var(--blank)',S[2]],hatch:null,unit:'',title:nomeSel,
+ const setTxt=SG.map(g=>g[1].toLowerCase()).join(', ');
+ el.querySelector('[data-am]').innerHTML=!selA.length?'<p class="hint" style="margin-top:12px">Escolha pelo menos um APL ou setor.</p>':`<div class="amr"><div><span>${esc(nomeSel)}</span><b>${nf0.format(mset.size)}</b><em>municípios${UF?' em '+UF:''} · ${polos.size} cidade${polos.size===1?'':'s'} polo ◆</em></div><div><span>Locais dos pontos das entrevistas</span><b>${nl}</b><em>de ${npts} ponto${npts===1?'':'s'} marcado${npts===1?'':'s'}</em></div><div class="ok"><span>Locais dentro dos municípios dos APLs</span><b>${nd}</b></div><div class="no"><span>Locais fora</span><b>${nf}</b></div></div>
+  <p class="ams">${nl?`<b>${nd} de ${nl}</b> locais dos pontos das entrevistas ligados a ${esc(setTxt)} ficam em município ${selA.length===1?'desse APL':'desses APLs'}.`:'Nenhum local de ponto das entrevistas ligado aos setores escolhidos.'} ${mset.size?`${nf0.format(mset.size-mComLocal)} dos ${nf0.format(mset.size)} municípios não têm nenhum local.`:''}</p>
+  ${tab}<p class="hint">Cada linha é um ponto das entrevistas, e o número no círculo do mapa é o número do ponto. Um ponto pode ter vários locais (municípios onde atua). Dentro e fora contam locais. Cadeia <b>principal</b> = o ponto é dessa cadeia; <b>citada</b> = a cadeia aparece entre outras do ponto (círculo tracejado). Os pontos vêm dos setores dos APLs escolhidos. Correspondência setor → pontos: <b>rascunho para revisão</b>.${semPolo?` ${semPolo} APL${semPolo===1?'':'s'} sem cidade polo no mapa (fora da base ou grafia não reconhecida).`:''}</p>`;
+ // cor: setor original da planilha (subgrupos do agrupamento), APL isolado, ou cor única
+ const catOf=new Map();for(const a of inUF)if(aplSt.sel.has(a.id)){const k=aplSt.cor==='so'?a.so:aplSt.cor==='apl'?a.n:'u';if(!catOf.has(a.c))catOf.set(a.c,new Set());catOf.get(a.c).add(k)}
+ let cats=[...new Set([...catOf.values()].flatMap(x=>[...x]))],cnt=new Map(cats.map(k=>[k,[...catOf.values()].filter(x=>x.has(k)).length]));cats.sort((a,b)=>cnt.get(b)-cnt.get(a)||a.localeCompare(b));
+ const MAXC=CATP.length,top=cats.slice(0,cats.length>MAXC?MAXC-1:MAXC),rest=cats.length>MAXC;
+ const colOf=k=>aplSt.cor==='u'?corS:top.includes(k)?CATP[top.indexOf(k)]:'#9a9a9a';
+ const catCol=c=>{const x=catOf.get(c);if(!x)return null;if(x.size>1)return'#3a3a3a';return colOf([...x][0])};
+ const palette=[...new Set(cods.map(catCol).filter(Boolean))],vals=new Map(cods.map(c=>{const k=catCol(c);return[c,k?1+palette.indexOf(k):0]}));
+ const o={cods,inSet:new Set(cods),showOut:true,vals,breaks:palette.map((_,i)=>i+0.5),colors:['var(--blank)',...palette],hatch:null,unit:'',title:nomeSel,
+  tipf:(c,r)=>{const x=catOf.get(c),a=inUF.filter(a=>a.c===c&&aplSt.sel.has(a.id));return `${r.municipio} (${r.uf})`+(a.length?': '+[...new Map(a.map(z=>[z.id,z])).values()].map(z=>z.n+' ['+z.so+']').join('; '):' · sem APL escolhido')+(polos.has(c)?' · cidade polo':'')},
   marks:[...polos].map(([c,n])=>({c,t:`Cidade polo: ${(RM.get(c)||{}).municipio||c} · ${n}`})),
   pts:p=>rel[p.id]&&!aplSt.off.has(p.id)?(mset.has(p.codmun)?{fill:'#1a7f3c',stroke:'#fff',w:1.5,lab:String(p.id),tc:'#fff',dash:rel[p.id]==='c'}:{fill:'#fff',stroke:'#d73027',w:2.5,lab:String(p.id),tc:'#d73027',dash:rel[p.id]==='c'}):null};
  drawMap($('m-apl'),o);
- $('l-apl').innerHTML=`<div><i style="background:${S[2]}"></i>município com ${aplSt.id?'o APL escolhido':'APL do setor'}</div><div><i style="background:var(--blank)"></i>sem</div><div><i style="background:#111;transform:rotate(45deg) scale(.8)"></i>cidade polo do APL</div><div><i style="background:#1a7f3c;border-radius:50%"></i>local dentro (número = ponto)</div><div><i style="background:#fff;border:2.5px solid #d73027;border-radius:50%"></i>local fora</div><div><i style="background:#fff;border:2px dashed #555;border-radius:50%"></i>cadeia citada (não principal)</div>`}
+ const legCat=aplSt.cor==='u'?`<div><i style="background:${corS}"></i>município ${selA.length===1?'do APL escolhido':'dos APLs escolhidos'}</div>`:top.map(k=>`<div><i style="background:${colOf(k)}"></i>${esc(k)} <span class="u">(${cnt.get(k)})</span></div>`).join('')+(rest?`<div><i style="background:#9a9a9a"></i>outros ${aplSt.cor==='so'?'setores':'APLs'} (${cats.length-top.length})</div>`:'')+([...catOf.values()].some(x=>x.size>1)?`<div><i style="background:#3a3a3a"></i>mais de um ${aplSt.cor==='so'?'setor':'APL'} <span class="u">(${[...catOf.values()].filter(x=>x.size>1).length})</span></div>`:'');
+ $('l-apl').innerHTML=`<div class="seg" role="group" aria-label="Colorir municípios por" style="margin-bottom:6px">${[['so','Setor da planilha'],['apl','APL'],['u','Cor única']].map(([k,l])=>`<button type="button" data-acor="${k}" aria-pressed="${aplSt.cor===k}">${l}</button>`).join('')}</div>${legCat}<div><i style="background:var(--blank)"></i>sem APL escolhido</div><div><i style="background:#111;transform:rotate(45deg) scale(.8)"></i>cidade polo do APL</div><div><i style="background:#1a7f3c;border-radius:50%"></i>local dentro (número = ponto)</div><div><i style="background:#fff;border:2.5px solid #d73027;border-radius:50%"></i>local fora</div><div><i style="background:#fff;border:2px dashed #555;border-radius:50%"></i>cadeia citada (não principal)</div>`}
 
 // ---------- inicialização ----------
 let mbI,mbS,mbG;
 function renderAll(){ibge();sicor();BASEAGG||(BASEAGG=aggImoveis(null));geo();const vis=document.querySelector('.pane:not([hidden])').id;
- if(vis==='p-ibge')mbI.render();if(vis==='p-sicor')mbS.render();if(vis==='p-geo')mbG.render();if(vis==='p-int'){integ();aplCmp()}}
+ if(vis==='p-ibge')mbI.render();if(vis==='p-sicor')mbS.render();if(vis==='p-geo')mbG.render();if(vis==='p-int')integ();if(vis==='p-apl')aplCmp()}
 fetch('apl.json').then(r=>r.ok?r.json():{rows:[]}).catch(()=>({rows:[]})).then(j=>{APL=j.rows||[];APLM=new Map();for(const a of APL){if(!APLM.has(a.c))APLM.set(a.c,[]);APLM.get(a.c).push(a)}if(R.length)renderAll()});
 fetch('arranjos_pontos.json').then(r=>r.ok?r.json():{pontos:[]}).catch(()=>({pontos:[]})).then(j=>{PTS=j.pontos||[];PTSALL=j.todos||[];if(R.length)renderAll()});
 Promise.all(['data.json','geo.json','imoveis_simulados.json'].map(f=>fetch(f).then(r=>{if(!r.ok)throw new Error(f);return r.json()}))).then(([d,g,im])=>{
@@ -481,10 +519,10 @@ Promise.all(['data.json','geo.json','imoveis_simulados.json'].map(f=>fetch(f).th
  mbS=MapBuilder($('mb-sicor'),{keys:varsOf(['SICOR']),filterKeys:all,agSel:()=>$('ag-sicor').value,geoAgg:()=>BASEAGG});
  geoF=ImovelFilters($('if-geo'),()=>{geo();mbG.render()});
  mbG=MapBuilder($('mb-geo'),{keys:varsOf(['Geo']),filterKeys:all,agSel:()=>'',geoAgg:()=>geoAgg});
- $('fl-int').innerHTML=`<div class="box b1" style="max-width:900px"><div class="bh"><span class="n">1</span>Recorte de municípios<button class="clr" data-clr>Limpar</button></div><div class="chk"><label><input type="radio" name="rc-int" value="todos" checked> Todos</label><label><input type="radio" name="rc-int" value="sel"> Seleção personalizada</label></div><div data-f hidden></div></div>`;
- intU=FilterList($('fl-int').querySelector('[data-f]'),all,integ,'Municípios que atendem a todas as condições:');intU.set([{v:'vbp',ag:'',op:'>',x:null}]);intSt.rc='todos';
- $('fl-int').addEventListener('change',e=>{if(e.target.name==='rc-int'){intSt.rc=e.target.value;$('fl-int').querySelector('[data-f]').hidden=intSt.rc!=='sel';integ()}});
- $('fl-int').addEventListener('click',e=>{if(e.target.dataset.clr==null)return;intU.set([]);intSt.rc='todos';$('fl-int').querySelector('[value=todos]').checked=true;$('fl-int').querySelector('[data-f]').hidden=true;integ()});
+ $('fl-int').innerHTML=`<div class="box b1" style="max-width:900px"><div class="bh"><span class="n">1</span>Recorte de municípios<button class="clr" data-clr>Limpar</button></div><div class="chk"><label><input type="radio" name="rc-int" value="todos" checked> Todos</label><label><input type="radio" name="rc-int" value="sel"> Seleção por condições</label><label><input type="radio" name="rc-int" value="mun"> Escolher municípios</label></div><div data-f hidden></div><div data-mp hidden></div></div>`;
+ intU=FilterList($('fl-int').querySelector('[data-f]'),all,integ,'Municípios que atendem a todas as condições:');intMP=MunPicker($('fl-int').querySelector('[data-mp]'),integ);intU.set([{v:'vbp',ag:'',op:'>',x:null}]);intSt.rc='todos';
+ $('fl-int').addEventListener('change',e=>{if(e.target.name==='rc-int'){intSt.rc=e.target.value;$('fl-int').querySelector('[data-f]').hidden=intSt.rc!=='sel';$('fl-int').querySelector('[data-mp]').hidden=intSt.rc!=='mun';integ()}});
+ $('fl-int').addEventListener('click',e=>{if(e.target.dataset.clr==null)return;intU.set([]);intMP.set([]);intSt.rc='todos';$('fl-int').querySelector('[value=todos]').checked=true;$('fl-int').querySelector('[data-f]').hidden=true;$('fl-int').querySelector('[data-mp]').hidden=true;integ()});
  intF=ImovelFilters($('if-int'),integ);
  $('ctl-int').innerHTML=`<div class="box b3" style="max-width:640px"><div class="bh"><span class="n">3</span>Legenda do mapa<button class="clr" data-clr>Limpar</button></div><div class="fr">${legendCtl()}</div></div>
  <div class="box b4" style="max-width:640px;margin-top:12px"><div class="bh"><span class="n">4</span>Hachura (variável auxiliar)<button class="clr" data-clrh hidden>Remover</button></div><p class="hint">Marca com hachura os municípios do mapa que também atendem a outra condição, por exemplo ter APL. Ao lado do mapa sai a coincidência entre recorte e hachura.</p><button class="btn add" data-addh>+ Adicionar hachura</button><div data-h hidden></div></div>`;
@@ -494,7 +532,7 @@ Promise.all(['data.json','geo.json','imoveis_simulados.json'].map(f=>fetch(f).th
  $('ctl-int').addEventListener('change',e=>{if(e.target.closest('[data-h]'))return;const k=e.target.dataset.k;if(k){intSt[k]=e.target.value;$('ctl-int').querySelector('[data-fx]').hidden=intSt.m!=='fx';integ()}});
  $('ctl-int').addEventListener('input',e=>{if(e.target.closest('[data-h]'))return;if(e.target.dataset.k==='fx'){intSt.fx=e.target.value;integ()}});
  $('ctl-int').addEventListener('click',e=>{if(e.target.dataset.clr==null)return;Object.assign(intSt,{m:'q5',p:'lr',fx:''});const c=$('ctl-int');c.querySelector('[data-k=m]').value='q5';c.querySelector('[data-k=p]').value='lr';c.querySelector('[data-k=fx]').value='';c.querySelector('[data-fx]').hidden=true;integ()});
- document.querySelector('#p-int .seg').addEventListener('click',e=>{const v=e.target.dataset.mv;if(!v)return;intSt.mv=v;document.querySelectorAll('#p-int .seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mv===v));integ()});
+ $('p-int').querySelector('[data-mv]').closest('.seg').addEventListener('click',e=>{const v=e.target.dataset.mv;if(!v)return;intSt.mv=v;$('p-int').querySelectorAll('[data-mv]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mv===v));integ()});
  $('chips-int').addEventListener('click',e=>{const i=e.target.dataset.rmf;if(i!=null)intU.remove(+i)});
  const setBar=()=>document.documentElement.style.setProperty('--barh',document.querySelector('.bar').offsetHeight+'px');setBar();new ResizeObserver(setBar).observe(document.querySelector('.bar'));
  $('cp-int').onclick=()=>{const t=JSON.stringify(intSt.view,null,1);$('vj-int').hidden=false;$('vj-int').textContent=t;navigator.clipboard?.writeText(t).catch(()=>{})};
