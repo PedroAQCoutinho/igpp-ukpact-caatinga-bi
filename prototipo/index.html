@@ -213,6 +213,10 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:var(--in
 .atree{display:grid;gap:4px;max-height:420px;overflow:auto;margin-top:8px;padding-right:4px}.atgh{display:flex;align-items:center;gap:4px}.atgh label{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}.atgh i{width:11px;height:11px;border-radius:3px;display:inline-block}.atgh em,.atgl em{color:var(--mut);font-style:normal;font-size:12px}
 .atx{border:0;background:none;cursor:pointer;font-size:14px;width:24px;height:28px;color:var(--ink)}.atgl{display:grid;gap:2px;margin:2px 0 6px 30px;padding-left:8px;border-left:2px solid var(--line)}.atgl label{display:flex;gap:6px;align-items:flex-start;font-size:13.5px;line-height:1.3;cursor:pointer}.atgl input{flex:none;margin-top:2px}
 .aplr{position:sticky;top:var(--barh,64px)}
+
+.ppo{display:grid;gap:8px}.ppo>label{display:grid;grid-template-columns:auto 1fr;column-gap:8px;font-size:14px;cursor:pointer}.ppo>label em{grid-column:2;font-style:normal;color:var(--mut);font-size:12.5px}
+[data-opk]{margin-left:26px;display:grid;gap:6px}[data-opk] input[type=search]{min-height:36px;padding:0 10px;border:1px solid var(--line);border-radius:6px;font-size:14px}
+.apt .rt.e{background:transparent;color:#7a5a8c;border:1px solid #7a5a8c}
 </style>
 </head>
 <body>
@@ -274,7 +278,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:var(--in
 </div>
 
 <div id="p-apl" class="pane" hidden>
-<section><h2>APLs × pontos das entrevistas</h2><p class="q">Escolha setores de APL inteiros ou APLs isolados e veja quantos locais dos pontos das entrevistas, da mesma cadeia, estão nos municípios desses APLs. APLs: Observatório Brasileiro de APLs (MDIC, outubro de 2022), agrupados por setor. O mapa usa a UF do topo.</p><div id="apl-cmp"></div></section>
+<section><h2>APLs × pontos das entrevistas</h2><p class="q">Construtor de mapa dos APLs: 1) recorte pelos APLs (setor inteiro ou APLs isolados); 2) escolha os pontos a plotar; 3) escolha como colorir os municípios. Embaixo, quantos locais dos pontos estão nos municípios desses APLs. APLs: Observatório Brasileiro de APLs (MDIC, outubro de 2022), agrupados por setor. O mapa usa a UF do topo.</p><div id="apl-cmp"></div></section>
 </div>
 <div id="p-int" class="pane" hidden>
 <p class="warn"><span class="sim">PARTE GEO SIMULADA</span> As variáveis socioeconômicas são reais.</p>

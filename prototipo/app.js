@@ -441,8 +441,8 @@ function integ(){
 // ---------- aba 4, seção 5: APLs × pontos das entrevistas ----------
 // RASCUNHO de correspondência setor do APL → pontos das entrevistas. p = cadeia principal do ponto; c = cadeia citada entre outras. Pedro revisa.
 const CORR={apicultura:{13:'p',4:'c',6:'c'},caprinovinocultura:{12:'p',16:'p',4:'c'},bovinocultura:{17:'p'},fruticultura:{1:'p',4:'c',6:'c'},agricultura:{3:'p',8:'p',14:'p',21:'p',4:'c',18:'c'},textil:{15:'p',14:'c'},avicultura:{},pesca:{},mineral:{},turismo:{},outros:{}};
-const RELT={p:'principal',c:'citada'};
-let aplSt={sel:null,open:new Set(),q:'',off:new Set(),cor:'so'};
+const RELT={p:'cadeia principal',c:'cadeia citada',e:'escolhido'};
+let aplSt={sel:null,open:new Set(),q:'',off:new Set(),cor:'so',pp:{cad:true,polo:true,out:false},outSel:new Set(),oq:'',pc:'df'};
 const CATP=['#1b9e77','#d95f02','#7570b3','#e7298a','#66a61e','#e6ab02','#a6761d','#1f78b4','#b2df8a','#fb9a99'];
 function aplTree(inUF){ // seleção como na tipologia: setor (agrupamento) com os APLs isolados dentro, com busca
  const n=norm(aplSt.q),by=new Map();for(const a of inUF){if(!by.has(a.id))by.set(a.id,{id:a.id,n:a.n,s:a.s,cp:a.cp,m:0});by.get(a.id).m++}
@@ -456,33 +456,46 @@ function aplCmp(){const el=$('apl-cmp');if(!el||!APL.length)return;const cods=un
  if(!aplSt.sel){aplSt.sel=new Set(inUF.filter(a=>a.s==='apicultura').map(a=>a.id));aplSt.open.add('apicultura')}
  const selA=[...new Map(inUF.filter(a=>aplSt.sel.has(a.id)).map(a=>[a.id,a])).values()],mset=new Set(inUF.filter(a=>aplSt.sel.has(a.id)).map(a=>a.c));
  const setSel=[...new Set(selA.map(a=>a.s))],SG=APLG.filter(g=>setSel.includes(g[0]));
- const polos=new Map();for(const a of selA)if(a.cpc){const t=polos.get(a.cpc);polos.set(a.cpc,(t?t+'; ':'')+a.n)}
+ const polos=new Map();if(aplSt.pp.polo)for(const a of selA)if(a.cpc){const t=polos.get(a.cpc);polos.set(a.cpc,(t?t+'; ':'')+a.n)}
  const semPolo=selA.filter(a=>!a.cpc).length;
  const rel={};for(const g of setSel)for(const[i,r]of Object.entries(CORR[g]||{}))if(rel[i]!=='p')rel[i]=r;
- const ids=Object.keys(rel).map(Number).sort((a,b)=>(rel[a]===rel[b]?a-b:rel[a]==='p'?-1:1));
+ if(!aplSt.pp.cad)for(const k of Object.keys(rel))delete rel[k];
+ if(aplSt.pp.out)for(const i of aplSt.outSel)if(!rel[i])rel[i]='e';
+ const ORD={p:0,c:1,e:2},ids=Object.keys(rel).map(Number).sort((a,b)=>ORD[rel[a]]-ORD[rel[b]]||a-b);
  const locsOf=i=>PTS.filter(p=>p.id===i&&cs.has(p.codmun));
  const rows=ids.map(i=>{const L=locsOf(i),d=L.filter(p=>mset.has(p.codmun)).length,p0=PTS.find(p=>p.id===i)||PTSALL.find(p=>p.id===i);return{i,r:rel[i],org:p0?p0.org:'#'+i,L,d,f:L.length-d}});
  const ON=rows.filter(r=>!aplSt.off.has(r.i)),nl=ON.reduce((a,r)=>a+r.L.length,0),nd=ON.reduce((a,r)=>a+r.d,0),nf=nl-nd,npts=ON.filter(r=>r.L.length).length;
  const allOf=k=>new Set(inUF.filter(a=>a.s===k).map(a=>a.id)),full=SG.length===1&&[...allOf(SG[0][0])].every(i=>aplSt.sel.has(i))&&selA.length===allOf(SG[0][0]).size;
  const nomeSel=!selA.length?'Nenhum APL escolhido':full?'APLs de '+SG[0][1].toLowerCase():selA.length===1?selA[0].n:`${selA.length} APLs escolhidos`;
  const corS=SG.length===1?SG[0][2]:'#7a5a8c';
- if(!el.dataset.ok){el.dataset.ok=1;el.innerHTML=`<div class="aplq"><div><div class="box b2"><div class="bh"><span class="n">1</span>APLs<button class="clr" data-aclr>Limpar</button></div><p class="hint">Marque um setor inteiro (agrupamento) ou abra o setor ▸ e marque APLs isolados, como na tipologia.</p><input type="search" data-aq placeholder="Buscar APL, setor ou cidade polo: mel, Seridó, Picos…" aria-label="Buscar APL"><div class="atree" data-at></div></div><div data-am></div></div><div class="aplr"><div class="map" id="m-apl"></div><div class="leg" id="l-apl"></div></div></div>`;
+ if(!el.dataset.ok){el.dataset.ok=1;el.innerHTML=`<div class="aplq"><div><div class="box b1"><div class="bh"><span class="n">1</span>Recorte: APLs<button class="clr" data-aclr>Limpar</button></div><p class="hint">Marque um setor inteiro (agrupamento) ou abra o setor ▸ e marque APLs isolados, como na tipologia.</p><input type="search" data-aq placeholder="Buscar APL, setor ou cidade polo: mel, Seridó, Picos…" aria-label="Buscar APL"><div class="atree" data-at></div></div>
+  <div class="box b2" style="margin-top:12px"><div class="bh"><span class="n">2</span>Pontos no mapa</div><div class="ppo">
+   <label><input type="checkbox" data-pp="cad" checked> <b>Pontos das entrevistas da mesma cadeia</b><em>Ligados aos setores marcados pela correspondência setor → pontos (rascunho). Entram na tabela e na conta dentro/fora.</em></label>
+   <label><input type="checkbox" data-pp="out"> <b>Outros pontos das entrevistas</b><em>Escolha qualquer ponto pela busca; também entra na tabela.</em></label><div data-opk hidden></div>
+   <label><input type="checkbox" data-pp="polo" checked> <b>Cidades polo dos APLs</b> ◆<em>Coluna "Cidade Polo*" da planilha.</em></label>
+   <div class="fr" style="margin-top:4px"><span class="hint">Cor dos pontos:</span><div class="seg" role="group" aria-label="Cor dos pontos"><button type="button" data-pc="df" aria-pressed="true">Dentro / fora do APL</button><button type="button" data-pc="cl" aria-pressed="false">Classe A–D</button></div></div></div></div>
+  <div class="box b3" style="margin-top:12px"><div class="bh"><span class="n">3</span>Cores dos municípios</div><div class="seg" role="group" aria-label="Colorir municípios por" data-acs></div><p class="hint" data-ach></p></div>
+  <div data-am></div></div><div class="aplr"><div class="map" id="m-apl"></div><div class="leg" id="l-apl"></div></div></div>`;
   el.addEventListener('input',e=>{if(e.target.dataset.aq==null)return;aplSt.q=e.target.value;aplCmp()});
-  el.addEventListener('click',e=>{const t=e.target;if(t.dataset.acor!=null){aplSt.cor=t.dataset.acor;aplCmp();return}if(t.dataset.ag!=null){const k=t.dataset.ag;aplSt.open.has(k)?aplSt.open.delete(k):aplSt.open.add(k);aplCmp()}if(t.dataset.aclr!=null){aplSt.sel=new Set();aplCmp()}});
+  el.addEventListener('click',e=>{const t=e.target;if(t.dataset.acor!=null){aplSt.cor=t.dataset.acor;aplCmp();return}if(t.dataset.pc!=null){aplSt.pc=t.dataset.pc;el.querySelectorAll('[data-pc]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.pc===aplSt.pc));aplCmp();return}if(t.dataset.ag!=null){const k=t.dataset.ag;aplSt.open.has(k)?aplSt.open.delete(k):aplSt.open.add(k);aplCmp()}if(t.dataset.aclr!=null){aplSt.sel=new Set();aplCmp()}});
   el.addEventListener('change',e=>{const t=e.target;const ins=APL.filter(a=>universe().includes(a.c));
    if(t.dataset.as!=null){const ids_=new Set(ins.filter(a=>a.s===t.dataset.as).map(a=>a.id));ids_.forEach(i=>t.checked?aplSt.sel.add(i):aplSt.sel.delete(i))}
    if(t.dataset.ai!=null){const i=+t.dataset.ai;t.checked?aplSt.sel.add(i):aplSt.sel.delete(i)}
-   if(t.dataset.on!=null){const i=+t.dataset.on;t.checked?aplSt.off.delete(i):aplSt.off.add(i)}aplCmp()});
+   if(t.dataset.on!=null){const i=+t.dataset.on;t.checked?aplSt.off.delete(i):aplSt.off.add(i)}
+   if(t.dataset.pp!=null){aplSt.pp[t.dataset.pp]=t.checked;el.querySelector('[data-opk]').hidden=!aplSt.pp.out}
+   if(t.dataset.opi!=null){const i=+t.dataset.opi;t.checked?aplSt.outSel.add(i):aplSt.outSel.delete(i)}aplCmp()});
+  el.addEventListener('input',e=>{if(e.target.dataset.oq==null)return;aplSt.oq=e.target.value;const n=norm(aplSt.oq);el.querySelectorAll('[data-opk] label[data-ptxt]').forEach(l=>l.hidden=!!n&&!l.dataset.ptxt.includes(n))});
+  el.querySelector('[data-opk]').innerHTML=`<input type="search" data-oq placeholder="Buscar ponto: SAF, mel, Pajeú…" aria-label="Buscar ponto das entrevistas"><div class="mpl">${ptsU().sort((a,b)=>a.id-b.id).map(p=>`<label data-ptxt="${esc(ptsTxt(p))}"><input type="checkbox" data-opi="${p.id}"> <span><b>#${p.id}</b> ${esc(p.org)} <em>${esc(p.cadeia)} · classe ${p.classe}</em></span></label>`).join('')}</div>`;
   new ResizeObserver(()=>{if($('m-apl').offsetParent)aplCmp()}).observe($('m-apl'))}
  const at=el.querySelector('[data-at]'),sy=at.scrollTop;at.innerHTML=aplTree(inUF);at.scrollTop=sy;at.querySelectorAll('[data-ind]').forEach(i=>i.indeterminate=true);
  const muns=L=>[...new Set(L.map(p=>p.mun+'/'+p.uf))].join(', ');
  const tab=ids.length?`<table class="apt"><thead><tr><th></th><th>Ponto das entrevistas</th><th class="r">Locais</th><th class="r">Dentro</th><th class="r">Fora</th></tr></thead><tbody>`+
-  rows.map(r=>`<tr class="${aplSt.off.has(r.i)?'off':''}"><td><input type="checkbox" data-on="${r.i}"${aplSt.off.has(r.i)?'':' checked'} aria-label="Mostrar #${r.i}"${r.L.length?'':' disabled'}></td><td><span class="nb ${r.r}">${r.i}</span>${esc(r.org)} <span class="rt ${r.r}">cadeia ${RELT[r.r]}</span><em>${r.L.length?esc(muns(r.L)):'sem local no mapa'}</em></td><td class="r">${r.L.length}</td><td class="r ok">${r.d}</td><td class="r no">${r.f}</td></tr>`).join('')+
+  rows.map(r=>`<tr class="${aplSt.off.has(r.i)?'off':''}"><td><input type="checkbox" data-on="${r.i}"${aplSt.off.has(r.i)?'':' checked'} aria-label="Mostrar #${r.i}"${r.L.length?'':' disabled'}></td><td><span class="nb ${r.r}">${r.i}</span>${esc(r.org)} <span class="rt ${r.r}">${RELT[r.r]}</span><em>${r.L.length?esc(muns(r.L)):'sem local no mapa'}</em></td><td class="r">${r.L.length}</td><td class="r ok">${r.d}</td><td class="r no">${r.f}</td></tr>`).join('')+
   `</tbody><tfoot><tr><td></td><td>Total marcados (${npts} ponto${npts===1?'':'s'})</td><td class="r">${nl}</td><td class="r ok">${nd}</td><td class="r no">${nf}</td></tr></tfoot></table>`:'';
  const mComLocal=new Set(ON.flatMap(r=>r.L.filter(p=>mset.has(p.codmun)).map(p=>p.codmun))).size;
  const setTxt=SG.map(g=>g[1].toLowerCase()).join(', ');
  el.querySelector('[data-am]').innerHTML=!selA.length?'<p class="hint" style="margin-top:12px">Escolha pelo menos um APL ou setor.</p>':`<div class="amr"><div><span>${esc(nomeSel)}</span><b>${nf0.format(mset.size)}</b><em>municípios${UF?' em '+UF:''} · ${polos.size} cidade${polos.size===1?'':'s'} polo ◆</em></div><div><span>Locais dos pontos das entrevistas</span><b>${nl}</b><em>de ${npts} ponto${npts===1?'':'s'} marcado${npts===1?'':'s'}</em></div><div class="ok"><span>Locais dentro dos municípios dos APLs</span><b>${nd}</b></div><div class="no"><span>Locais fora</span><b>${nf}</b></div></div>
-  <p class="ams">${nl?`<b>${nd} de ${nl}</b> locais dos pontos das entrevistas ligados a ${esc(setTxt)} ficam em município ${selA.length===1?'desse APL':'desses APLs'}.`:'Nenhum local de ponto das entrevistas ligado aos setores escolhidos.'} ${mset.size?`${nf0.format(mset.size-mComLocal)} dos ${nf0.format(mset.size)} municípios não têm nenhum local.`:''}</p>
+  <p class="ams">${nl?`<b>${nd} de ${nl}</b> locais dos pontos das entrevistas no mapa${aplSt.pp.out&&aplSt.outSel.size?'':' (ligados a '+esc(setTxt)+')'} ficam em município ${selA.length===1?'desse APL':'desses APLs'}.`:'Nenhum ponto das entrevistas no mapa (veja o passo 2).'} ${mset.size?`${nf0.format(mset.size-mComLocal)} dos ${nf0.format(mset.size)} municípios não têm nenhum local.`:''}</p>
   ${tab}<p class="hint">Cada linha é um ponto das entrevistas, e o número no círculo do mapa é o número do ponto. Um ponto pode ter vários locais (municípios onde atua). Dentro e fora contam locais. Cadeia <b>principal</b> = o ponto é dessa cadeia; <b>citada</b> = a cadeia aparece entre outras do ponto (círculo tracejado). Os pontos vêm dos setores dos APLs escolhidos. Correspondência setor → pontos: <b>rascunho para revisão</b>.${semPolo?` ${semPolo} APL${semPolo===1?'':'s'} sem cidade polo no mapa (fora da base ou grafia não reconhecida).`:''}</p>`;
  // cor: setor original da planilha (subgrupos do agrupamento), APL isolado, ou cor única
  const catOf=new Map();for(const a of inUF)if(aplSt.sel.has(a.id)){const k=aplSt.cor==='so'?a.so:aplSt.cor==='apl'?a.n:'u';if(!catOf.has(a.c))catOf.set(a.c,new Set());catOf.get(a.c).add(k)}
@@ -494,10 +507,13 @@ function aplCmp(){const el=$('apl-cmp');if(!el||!APL.length)return;const cods=un
  const o={cods,inSet:new Set(cods),showOut:true,vals,breaks:palette.map((_,i)=>i+0.5),colors:['var(--blank)',...palette],hatch:null,unit:'',title:nomeSel,
   tipf:(c,r)=>{const x=catOf.get(c),a=inUF.filter(a=>a.c===c&&aplSt.sel.has(a.id));return `${r.municipio} (${r.uf})`+(a.length?': '+[...new Map(a.map(z=>[z.id,z])).values()].map(z=>z.n+' ['+z.so+']').join('; '):' · sem APL escolhido')+(polos.has(c)?' · cidade polo':'')},
   marks:[...polos].map(([c,n])=>({c,t:`Cidade polo: ${(RM.get(c)||{}).municipio||c} · ${n}`})),
-  pts:p=>rel[p.id]&&!aplSt.off.has(p.id)?(mset.has(p.codmun)?{fill:'#1a7f3c',stroke:'#fff',w:1.5,lab:String(p.id),tc:'#fff',dash:rel[p.id]==='c'}:{fill:'#fff',stroke:'#d73027',w:2.5,lab:String(p.id),tc:'#d73027',dash:rel[p.id]==='c'}):null};
+  pts:p=>!rel[p.id]||aplSt.off.has(p.id)?null:aplSt.pc==='cl'?(p.prec==='regiao_aprox'?{fill:'#fff',stroke:PCL[p.classe],w:2.5,lab:String(p.id),tc:PCL[p.classe],dash:rel[p.id]==='c'}:{fill:PCL[p.classe],stroke:'#fff',w:1.5,lab:String(p.id),tc:'#fff',dash:rel[p.id]==='c'}):(mset.has(p.codmun)?{fill:'#1a7f3c',stroke:'#fff',w:1.5,lab:String(p.id),tc:'#fff',dash:rel[p.id]==='c'}:{fill:'#fff',stroke:'#d73027',w:2.5,lab:String(p.id),tc:'#d73027',dash:rel[p.id]==='c'})};
  drawMap($('m-apl'),o);
  const legCat=aplSt.cor==='u'?`<div><i style="background:${corS}"></i>município ${selA.length===1?'do APL escolhido':'dos APLs escolhidos'}</div>`:top.map(k=>`<div><i style="background:${colOf(k)}"></i>${esc(k)} <span class="u">(${cnt.get(k)})</span></div>`).join('')+(rest?`<div><i style="background:#9a9a9a"></i>outros ${aplSt.cor==='so'?'setores':'APLs'} (${cats.length-top.length})</div>`:'')+([...catOf.values()].some(x=>x.size>1)?`<div><i style="background:#3a3a3a"></i>mais de um ${aplSt.cor==='so'?'setor':'APL'} <span class="u">(${[...catOf.values()].filter(x=>x.size>1).length})</span></div>`:'');
- $('l-apl').innerHTML=`<div class="seg" role="group" aria-label="Colorir municípios por" style="margin-bottom:6px">${[['so','Setor da planilha'],['apl','APL'],['u','Cor única']].map(([k,l])=>`<button type="button" data-acor="${k}" aria-pressed="${aplSt.cor===k}">${l}</button>`).join('')}</div>${legCat}<div><i style="background:var(--blank)"></i>sem APL escolhido</div><div><i style="background:#111;transform:rotate(45deg) scale(.8)"></i>cidade polo do APL</div><div><i style="background:#1a7f3c;border-radius:50%"></i>local dentro (número = ponto)</div><div><i style="background:#fff;border:2.5px solid #d73027;border-radius:50%"></i>local fora</div><div><i style="background:#fff;border:2px dashed #555;border-radius:50%"></i>cadeia citada (não principal)</div>`}
+ el.querySelector('[data-acs]').innerHTML=[['so','Subgrupo (Setor Produtivo da planilha)'],['apl','APL'],['u','Cor única']].map(([k,l])=>`<button type="button" data-acor="${k}" aria-pressed="${aplSt.cor===k}">${l}</button>`).join('');
+ el.querySelector('[data-ach]').textContent=aplSt.cor==='so'?'Cada cor é um valor da coluna "Setor Produtivo*" da planilha, que o BI agrupa no setor do passo 1.':aplSt.cor==='apl'?'Cada cor é um APL. Até 10 cores; o resto fica cinza.':'Uma cor para todos os municípios dos APLs marcados.';
+ const pleg=aplSt.pc==='cl'?Object.entries(PCL).map(([k,c])=>`<div><i style="background:${c};border-radius:50%"></i>ponto classe ${k}</div>`).join(''):`<div><i style="background:#1a7f3c;border-radius:50%"></i>local dentro (número = ponto)</div><div><i style="background:#fff;border:2.5px solid #d73027;border-radius:50%"></i>local fora</div>`;
+ $('l-apl').innerHTML=`${legCat}<div><i style="background:var(--blank)"></i>sem APL escolhido</div>${polos.size?'<div><i style="background:#111;transform:rotate(45deg) scale(.8)"></i>cidade polo do APL</div>':''}${ids.length?pleg+'<div><i style="background:#fff;border:2px dashed #555;border-radius:50%"></i>cadeia citada (não principal)</div>':''}`}
 
 // ---------- inicialização ----------
 let mbI,mbS,mbG;

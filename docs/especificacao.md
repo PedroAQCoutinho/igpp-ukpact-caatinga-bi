@@ -481,3 +481,15 @@ Pedidos de Pedro sobre o v14 aprovado:
    - "Marcar os visíveis", "Limpar escolha" e chips removíveis.
    - Não se combina com as condições; é um modo alternativo.
    - Entra na visão salva do feedback (`municipios_escolhidos`).
+
+### 21.1 Protótipo v16 (27/11/2026): aba APLs como construtor de mapa
+
+A aba APLs vira construtor, com passos coloridos (mapa à direita, posição aprovada por Pedro):
+
+1. **Recorte: APLs.** Caixas por setor e APLs isolados, com busca (aprovado: "o recorte está ótimo dessa forma").
+2. **Pontos no mapa** (tipos de ponto, cada um liga e desliga):
+   - **pontos das entrevistas da mesma cadeia:** vêm da correspondência setor → pontos (rascunho) e entram na tabela e na conta dentro/fora;
+   - **outros pontos das entrevistas:** escolha livre por busca, com marca "escolhido" na tabela; também entram na conta;
+   - **cidades polo dos APLs** ◆, da coluna "Cidade Polo\*";
+   - **cor dos pontos:** "Dentro / fora do APL" (padrão) ou "Classe A–D".
+3. **Cores dos municípios:** "Subgrupo (Setor Produtivo da planilha)", "APL" ou "Cor única". A legenda explica a coluna usada.
